@@ -3,6 +3,7 @@ import useEditorStore from '@/app/store/editorStore'
 import useBookStore from '@/app/store/bookStore'
 import { streamGenerateChapter, rewriteText, summarizeChapter } from './aiApi'
 import { useToast } from '@/components/ui/Toast'
+import { getFriendlyMessage } from '@/lib/friendlyError'
 
 const ACTIONS = [
   { key: 'continue', label: 'Continue', icon: '→', desc: 'Write more from where it left off' },
@@ -71,7 +72,7 @@ export default function AISidePanel() {
       (err) => {
         setAiLoading(false, null)
         setAbortFn(null)
-        toast.error('Generation failed: ' + err.message)
+        toast.error(getFriendlyMessage(err))
       },
     )
     setAbortFn(() => cancel)
@@ -97,7 +98,7 @@ export default function AISidePanel() {
       setLastResult({ action, text: data.result, model: data.model_used, originalHtml: rawContent })
       toast.info(`${action.replace('_', ' ')} ready — review below`)
     } catch (err) {
-      toast.error('Action failed: ' + err.message)
+      toast.error(getFriendlyMessage(err))
     } finally {
       setAiLoading(false, null)
     }
@@ -113,7 +114,7 @@ export default function AISidePanel() {
       await refreshCurrentChapter()
       toast.success('Chapter summarized')
     } catch (err) {
-      toast.error('Summarize failed: ' + err.message)
+      toast.error(getFriendlyMessage(err))
     } finally {
       setAiLoading(false, null)
     }
@@ -235,7 +236,7 @@ export default function AISidePanel() {
                       setLastResult(null)
                       toast.success('Chapter scrapped — ready to regenerate')
                     } catch (err) {
-                      toast.error('Failed to scrap: ' + err.message)
+                      toast.error(getFriendlyMessage(err))
                     }
                   }}
                   className="mt-2 w-full rounded-lg border border-destructive/40 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10"

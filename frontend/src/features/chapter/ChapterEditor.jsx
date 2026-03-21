@@ -7,6 +7,7 @@ import RichTextEditor from '@/components/Editor/RichTextEditor'
 import AISidePanel from '@/features/ai/AISidePanel'
 import { generateOutline, rewriteText } from '@/features/ai/aiApi'
 import { useToast } from '@/components/ui/Toast'
+import { getFriendlyMessage } from '@/lib/friendlyError'
 
 export default function ChapterEditor() {
   const { bookId } = useParams()
@@ -36,7 +37,7 @@ export default function ChapterEditor() {
       await fetchChapters(bookId)
       toast.success('Outline is ready')
     } catch (err) {
-      toast.error('Outline generation failed: ' + err.message)
+      toast.error(getFriendlyMessage(err))
     } finally {
       setAiLoading(false, null)
     }
@@ -53,7 +54,7 @@ export default function ChapterEditor() {
       updateChapterContent(currentChapter.id, updated)
       toast.success(action === 'custom_edit' ? 'Custom edit applied' : `${action.replace('_', ' ')} applied`)
     } catch (err) {
-      toast.error('Action failed: ' + err.message)
+      toast.error(getFriendlyMessage(err))
     } finally {
       setAiLoading(false, null)
     }

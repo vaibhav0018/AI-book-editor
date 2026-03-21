@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from features.ai import service
 from features.ai.models import AIAction
+from features.ai.agents.planner_agent import OutlineParseError
 from features.ai.schemas import (
     OutlineRequest,
     OutlineResponse,
@@ -81,7 +82,13 @@ async def rewrite_text(payload: EditorActionRequest, db: Session = Depends(get_d
 @router.post("/summarize", response_model=SummarizeResponse)
 async def summarize_chapter(payload: SummarizeRequest, db: Session = Depends(get_db)):
     """Explicitly summarize a chapter's content."""
-    summary, model_used = await service.summarize_chapter(db, payload.chapter_id)
+    try:
+        summary, model_used = await service.summarize_chapter(db, payload.chapter_id)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
     return SummarizeResponse(summary=summary, model_used=model_used)
 
 

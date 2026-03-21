@@ -3,6 +3,7 @@ import useEditorStore from '@/app/store/editorStore'
 import useBookStore from '@/app/store/bookStore'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/Toast'
+import { getFriendlyMessage } from '@/lib/friendlyError'
 
 const STATUS_DOT = {
   empty: 'bg-border',
@@ -65,7 +66,7 @@ export default function ChapterSidebar({ bookId, onGenerateOutline }) {
       URL.revokeObjectURL(url)
       toast.success('PDF downloaded')
     } catch (err) {
-      toast.error('PDF export failed: ' + err.message)
+      toast.error(getFriendlyMessage(err))
     } finally {
       setExporting(false)
     }
