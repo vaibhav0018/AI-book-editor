@@ -6,20 +6,27 @@ import Underline from '@tiptap/extension-underline'
 import Placeholder from '@tiptap/extension-placeholder'
 import useEditorStore from '@/app/store/editorStore'
 
+const BUBBLE_ACTIONS = [
+  { key: 'rewrite', label: 'Rewrite', icon: '✏️' },
+  { key: 'improve', label: 'Improve', icon: '✨' },
+  { key: 'make_shorter', label: 'Shorter', icon: '📐' },
+  { key: 'make_longer', label: 'Longer', icon: '📏' },
+]
+
 export default function RichTextEditor({ onBubbleAction }) {
-  const { currentChapter, saveStatus, updateChapterContent, setCurrentChapterContent } = useEditorStore()
+  const { currentChapter, saveStatus, updateChapterContent, setCurrentChapterContent, aiLoading } = useEditorStore()
   const debounceRef = useRef(null)
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
-      Placeholder.configure({ placeholder: 'Start writing or generate a chapter...' }),
+      Placeholder.configure({ placeholder: 'Begin writing your story...' }),
     ],
     content: '',
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none outline-none min-h-[calc(100vh-8rem)] px-8 py-6',
+        class: 'outline-none min-h-[calc(100vh-8rem)] px-12 py-8 max-w-3xl mx-auto',
       },
     },
     onUpdate: ({ editor }) => {
@@ -38,15 +45,21 @@ export default function RichTextEditor({ onBubbleAction }) {
   // Sync editor content when switching chapters
   useEffect(() => {
     if (editor && currentChapter) {
-      const current = editor.getHTML()
       const incoming = currentChapter.content || ''
-      if (current !== incoming) {
+      if (editor.getHTML() !== incoming) {
         editor.commands.setContent(incoming, false)
       }
     }
   }, [editor, currentChapter?.id])
 
-  // Cleanup debounce on unmount
+  // Sync streamed AI content into editor in real-time
+  useEffect(() => {
+    if (editor && currentChapter && aiLoading) {
+      const incoming = currentChapter.content || ''
+      editor.commands.setContent(incoming, false)
+    }
+  }, [editor, currentChapter?.content, aiLoading])
+
   useEffect(() => () => clearTimeout(debounceRef.current), [])
 
   const getSelectedText = useCallback(() => {
@@ -57,35 +70,42 @@ export default function RichTextEditor({ onBubbleAction }) {
 
   if (!currentChapter) {
     return (
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        Select a chapter to start editing
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background">
+        <span className="text-5xl opacity-30">📝</span>
+        <p className="text-sm text-muted-foreground">Select a chapter to start writing</p>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      {/* Save indicator */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-1.5">
-        <span className="text-xs font-medium text-muted-foreground">{currentChapter.title}</span>
-        <span className="text-xs text-muted-foreground">
-          {saveStatus === 'saving' && 'Saving...'}
-          {saveStatus === 'saved' && 'Saved'}
-          {saveStatus === 'unsaved' && 'Unsaved changes'}
+    <div className="flex flex-1 flex-col overflow-hidden bg-card">
+      {/* Chapter title bar */}
+      <div className="flex items-center justify-between border-b border-border/40 px-6 py-2">
+        <span className="text-sm font-medium text-foreground">{currentChapter.title}</span>
+        <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          {saveStatus === 'saving' && (
+            <><span className="inline-block h-1.5 w-1.5 animate-pulse-soft rounded-full bg-warm" /> Saving...</>
+          )}
+          {saveStatus === 'saved' && (
+            <><span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" /> Saved</>
+          )}
+          {saveStatus === 'unsaved' && (
+            <><span className="inline-block h-1.5 w-1.5 rounded-full bg-warm" /> Unsaved</>
+          )}
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         {editor && (
           <BubbleMenu editor={editor} tippyOptions={{ duration: 150 }}>
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-background p-1 shadow-lg">
-              {['rewrite', 'improve', 'make_shorter', 'make_longer'].map((action) => (
+            <div className="animate-slide-up flex items-center gap-0.5 rounded-xl border border-border bg-card p-1 shadow-xl">
+              {BUBBLE_ACTIONS.map(({ key, label, icon }) => (
                 <button
-                  key={action}
-                  onClick={() => onBubbleAction?.(action, getSelectedText())}
-                  className="rounded px-2 py-1 text-xs hover:bg-muted"
+                  key={key}
+                  onClick={() => onBubbleAction?.(key, getSelectedText())}
+                  className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-foreground/80 hover:bg-primary/10 hover:text-primary"
                 >
-                  {action.replace('_', ' ').replace(/^\w/, c => c.toUpperCase())}
+                  <span className="text-[10px]">{icon}</span> {label}
                 </button>
               ))}
             </div>
