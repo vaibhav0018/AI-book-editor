@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import useEditorStore from '@/app/store/editorStore'
 import useBookStore from '@/app/store/bookStore'
 import { streamGenerateChapter, rewriteText, summarizeChapter } from './aiApi'
@@ -6,11 +6,17 @@ import StepIndicator from '@/components/ui/StepIndicator'
 import { useToast } from '@/components/ui/Toast'
 
 const ACTIONS = [
-  { key: 'continue', label: 'Continue', icon: '→' },
-  { key: 'rewrite', label: 'Rewrite', icon: '✏️' },
-  { key: 'improve', label: 'Improve', icon: '✨' },
-  { key: 'change_tone', label: 'Tone', icon: '🎭' },
+  { key: 'continue', label: 'Continue', icon: '→', desc: 'Write more from where it left off' },
+  { key: 'rewrite', label: 'Rewrite', icon: '✏️', desc: 'Rewrite with better prose' },
+  { key: 'improve', label: 'Improve', icon: '✨', desc: 'Sharpen language and flow' },
+  { key: 'change_tone', label: 'Tone', icon: '🎭', desc: 'Shift the writing voice' },
 ]
+
+function stripHtml(html) {
+  const div = document.createElement('div')
+  div.innerHTML = html
+  return div.textContent || ''
+}
 
 export default function AISidePanel() {
   const { currentChapter, setAiLoading, aiLoading, aiStep, setCurrentChapterContent, fetchChapters } = useEditorStore()
@@ -18,8 +24,15 @@ export default function AISidePanel() {
   const [lastResult, setLastResult] = useState(null)
   const [abortFn, setAbortFn] = useState(null)
   const toast = useToast()
+  const resultRef = useRef(null)
 
   const bookId = selectedBook?.id
+
+  useEffect(() => {
+    if (lastResult && resultRef.current) {
+      resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [lastResult])
 
   const handleGenerate = () => {
     if (!bookId || !currentChapter) return
@@ -57,10 +70,17 @@ export default function AISidePanel() {
 
   const handleAction = async (action) => {
     if (!currentChapter) return
+    const rawContent = currentChapter.content || ''
+    if (!rawContent.trim()) {
+      toast.error('Write some content first')
+      return
+    }
     setAiLoading(true, action)
     try {
-      const { data } = await rewriteText(currentChapter.id, currentChapter.content || '', action)
-      setLastResult({ action, text: data.result, model: data.model_used })
+      const plainText = stripHtml(rawContent)
+      const { data } = await rewriteText(currentChapter.id, plainText, action)
+      setLastResult({ action, text: data.result, model: data.model_used, originalHtml: rawContent })
+      toast.info(`${action.replace('_', ' ')} ready — review below`)
     } catch (err) {
       toast.error('Action failed: ' + err.message)
     } finally {
@@ -84,11 +104,21 @@ export default function AISidePanel() {
   }
 
   const applyResult = () => {
-    if (lastResult) {
-      setCurrentChapterContent(lastResult.text)
-      setLastResult(null)
-      toast.success('Applied to editor')
+    if (!lastResult) return
+
+    if (lastResult.action === 'continue') {
+      const existing = currentChapter.content || ''
+      const appended = existing + `<p>${lastResult.text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
+      setCurrentChapterContent(appended)
+      toast.success('Continuation added to chapter')
+    } else if (lastResult.action === 'summarize') {
+      toast.info('Summary saved to memory')
+    } else {
+      const wrappedHtml = `<p>${lastResult.text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
+      setCurrentChapterContent(wrappedHtml)
+      toast.success('Changes applied to editor')
     }
+    setLastResult(null)
   }
 
   return (
@@ -108,6 +138,35 @@ export default function AISidePanel() {
           </div>
         ) : (
           <div className="space-y-5">
+            {/* AI result preview — shown at top so user sees it */}
+            {lastResult && (
+              <div ref={resultRef} className="animate-slide-up rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                  {lastResult.action === 'continue' ? 'Continuation' : lastResult.action.replace('_', ' ')} · {lastResult.model}
+                </p>
+                <div className="mb-3 max-h-52 overflow-y-auto rounded-lg bg-card p-2.5 text-xs leading-relaxed text-foreground/80">
+                  {lastResult.text.slice(0, 800)}{lastResult.text.length > 800 && '...'}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={applyResult}
+                    className="flex-1 rounded-lg bg-primary py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    ✓ {lastResult.action === 'continue' ? 'Append' : lastResult.action === 'summarize' ? 'Done' : 'Apply'}
+                  </button>
+                  <button
+                    onClick={() => setLastResult(null)}
+                    className="flex-1 rounded-lg border border-border py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
+                  >
+                    ✕ Discard
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step indicator */}
+            {aiLoading && <StepIndicator currentStep={aiStep} />}
+
             {/* Generate section */}
             <section>
               <h3 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -136,15 +195,19 @@ export default function AISidePanel() {
               <h3 className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <span>✏️</span> Edit Chapter
               </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {ACTIONS.map(({ key, label, icon }) => (
+              <div className="space-y-1.5">
+                {ACTIONS.map(({ key, label, icon, desc }) => (
                   <button
                     key={key}
                     onClick={() => handleAction(key)}
                     disabled={aiLoading || !currentChapter.content}
-                    className="flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2 py-2 text-xs font-medium text-foreground/80 hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:opacity-40"
+                    className="flex w-full items-start gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left hover:border-primary/40 hover:bg-primary/5 disabled:opacity-40"
                   >
-                    <span className="text-[11px]">{icon}</span> {label}
+                    <span className="mt-0.5 text-sm">{icon}</span>
+                    <div>
+                      <span className="text-xs font-medium text-foreground">{label}</span>
+                      <p className="text-[10px] leading-tight text-muted-foreground">{desc}</p>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -182,35 +245,6 @@ export default function AISidePanel() {
                   <p className="text-xs leading-relaxed text-muted-foreground">{selectedBook.global_summary}</p>
                 </div>
               </section>
-            )}
-
-            {/* Step indicator */}
-            {aiLoading && <StepIndicator currentStep={aiStep} />}
-
-            {/* AI result preview */}
-            {lastResult && (
-              <div className="animate-slide-up rounded-xl border border-primary/20 bg-primary/5 p-4">
-                <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                  AI {lastResult.action} · {lastResult.model}
-                </p>
-                <p className="mb-3 max-h-44 overflow-y-auto text-xs leading-relaxed text-foreground/80">
-                  {lastResult.text.slice(0, 600)}{lastResult.text.length > 600 && '...'}
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={applyResult}
-                    className="flex-1 rounded-lg bg-primary py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
-                  >
-                    ✓ Accept
-                  </button>
-                  <button
-                    onClick={() => setLastResult(null)}
-                    className="flex-1 rounded-lg border border-border py-2 text-xs font-medium text-muted-foreground hover:bg-muted"
-                  >
-                    ✕ Reject
-                  </button>
-                </div>
-              </div>
             )}
           </div>
         )}
