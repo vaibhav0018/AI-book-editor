@@ -17,6 +17,7 @@ const useEditorStore = create((set, get) => ({
   selectChapter: async (chapterId) => {
     const { data } = await apiClient.get(`/api/chapters/${chapterId}`)
     set({ currentChapter: data, saveStatus: 'saved' })
+    try { sessionStorage.setItem('lastChapterId', chapterId) } catch {}
   },
 
   updateChapterContent: async (chapterId, content) => {

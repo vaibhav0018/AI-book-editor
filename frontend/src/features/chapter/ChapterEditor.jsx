@@ -11,15 +11,21 @@ import { useToast } from '@/components/ui/Toast'
 export default function ChapterEditor() {
   const { bookId } = useParams()
   const { fetchBook, selectedBook } = useBookStore()
-  const { fetchChapters, setAiLoading, currentChapter, setCurrentChapterContent, updateChapterContent } = useEditorStore()
+  const { fetchChapters, selectChapter, setAiLoading, currentChapter, setCurrentChapterContent, updateChapterContent } = useEditorStore()
   const toast = useToast()
 
   useEffect(() => {
-    if (bookId) {
-      fetchBook(bookId)
-      fetchChapters(bookId)
-    }
-  }, [bookId, fetchBook, fetchChapters])
+    if (!bookId) return
+    fetchBook(bookId)
+    fetchChapters(bookId).then(() => {
+      const { currentChapter, chapters } = useEditorStore.getState()
+      if (currentChapter) return
+      const saved = sessionStorage.getItem('lastChapterId')
+      const match = saved && chapters.find((ch) => ch.id === saved)
+      if (match) selectChapter(match.id)
+      else if (chapters.length > 0) selectChapter(chapters[0].id)
+    })
+  }, [bookId, fetchBook, fetchChapters, selectChapter])
 
   const handleGenerateOutline = async () => {
     if (!bookId) return
