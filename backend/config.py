@@ -32,5 +32,12 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen2.5:7b"
 
+    # LangChain chapter summarization (OpenAI only; falls back to legacy path if disabled / no key)
+    USE_LANGCHAIN_CHAPTER_SUMMARY: bool = True
+    LANGCHAIN_STUFF_MAX_TOKENS: int = 12000
+    LANGCHAIN_MAP_CHUNK_TOKENS: int = 4000
+    LANGCHAIN_MAP_CHUNK_OVERLAP: int = 200
+    LANGCHAIN_MAP_REDUCE_TOKEN_MAX: int = 8000
+
 
 settings = Settings()

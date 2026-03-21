@@ -17,5 +17,14 @@ python-dotenv>=1.0.0,<2.0.0
 # AI
 openai>=1.59.0,<2.0.0
 
+# LangChain — chapter summarization (stuff / map_reduce) + OpenAI chat + splitting + token count
+langchain>=1.2.0,<2.0.0
+langchain-classic>=1.0.0,<2.0.0
+langchain-community>=0.4.0,<1.0.0
+langchain-core>=1.2.0,<2.0.0
+langchain-openai>=1.1.0,<2.0.0
+langchain-text-splitters>=1.1.0,<2.0.0
+tiktoken>=0.7.0,<1.0.0
+
 # Export
 fpdf2>=2.8.0,<3.0.0
