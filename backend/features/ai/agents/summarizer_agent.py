@@ -2,16 +2,35 @@
 
 This agent is internal-only (no direct API endpoint). It auto-runs after
 every chapter generation to update ``chapter.summary`` and ``book.global_summary``.
+
+Chapter summarization can use LangChain (stuff / map_reduce + tiktoken) when
+``USE_LANGCHAIN_CHAPTER_SUMMARY`` is true and OpenAI is configured; otherwise
+the legacy single-shot prompt path (OpenAI or Ollama via ``llm_client``).
 """
 
+import logging
+
+from config import settings
 from features.ai.llm_client import llm_client
 from prompts.summary_prompt import build_summary_messages, build_global_summary_messages
+
+logger = logging.getLogger(__name__)
 
 
 async def summarize_chapter(
     chapter_content: str, book_brief: str, chapter_title: str
 ) -> tuple[str, str]:
     """Return (chapter_summary, model_used)."""
+    if settings.USE_LANGCHAIN_CHAPTER_SUMMARY and settings.OPENAI_API_KEY:
+        try:
+            from features.ai.langchain_summarize import summarize_chapter_langchain
+
+            return await summarize_chapter_langchain(
+                chapter_content, book_brief, chapter_title
+            )
+        except Exception:
+            logger.exception("LangChain chapter summarize failed; using legacy path")
+
     messages = build_summary_messages(chapter_content, book_brief, chapter_title)
     summary, model_used = await llm_client.complete(messages, stream=False, temperature=0.3)
     return summary.strip(), model_used

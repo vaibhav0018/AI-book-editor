@@ -16,6 +16,16 @@ const useEditorStore = create((set, get) => ({
     set({ chapters: data })
   },
 
+  /** Reload the open chapter from the API (e.g. after AI writes summary to DB). */
+  refreshCurrentChapter: async () => {
+    const id = get().currentChapter?.id
+    if (!id) return
+    const { data } = await apiClient.get(`/api/chapters/${id}`)
+    set((state) => ({
+      currentChapter: state.currentChapter?.id === id ? data : state.currentChapter,
+    }))
+  },
+
   selectChapter: async (chapterId, bookId) => {
     const { data } = await apiClient.get(`/api/chapters/${chapterId}`)
     set({ currentChapter: data, saveStatus: 'saved' })
@@ -49,6 +59,21 @@ const useEditorStore = create((set, get) => ({
     set((state) => ({
       chapters: state.chapters.filter((ch) => ch.id !== chapterId),
       currentChapter: state.currentChapter?.id === chapterId ? null : state.currentChapter,
+    }))
+  },
+
+  /** Clear chapter content and summary — keep chapter for regeneration. */
+  scrapChapter: async (chapterId) => {
+    const { data } = await apiClient.put(`/api/chapters/${chapterId}`, {
+      content: '',
+      summary: null,
+      status: 'draft',
+    })
+    set((state) => ({
+      currentChapter: state.currentChapter?.id === chapterId ? data : state.currentChapter,
+      chapters: state.chapters.map((ch) => (ch.id === chapterId ? { ...ch, ...data } : ch)),
+      saveStatus: 'saved',
+      contentSyncKey: state.contentSyncKey + 1,
     }))
   },
 
