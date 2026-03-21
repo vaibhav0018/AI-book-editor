@@ -14,6 +14,9 @@ def build_chapter_messages(context: dict) -> List[Dict[str, str]]:
         "- Write the FULL chapter (1500-3000 words).\n"
         "- Use markdown formatting: `## Chapter Title` at the top, then prose.\n"
         "- Stay faithful to the chapter brief.\n"
+        "- If the author has provided notes or a partial draft, use them as the "
+        "foundation — expand, enrich, and weave them into the full chapter. "
+        "Preserve the author's ideas, characters, and plot direction.\n"
         "- Do NOT repeat content from previous chapters.\n"
         "- End the chapter at a natural stopping point that invites the next chapter."
     )
@@ -46,7 +49,14 @@ def build_chapter_messages(context: dict) -> List[Dict[str, str]]:
 
     parts.append(f"\n**YOUR TASK — write this chapter:**")
     parts.append(f"Title: {context['current_chapter_title']}")
-    parts.append(f"Brief: {context['current_chapter_brief']}")
+    if context.get("current_chapter_brief"):
+        parts.append(f"Brief: {context['current_chapter_brief']}")
+
+    if context.get("current_chapter_content"):
+        parts.append(
+            f"\n**Author's notes / draft for this chapter (expand on these):**\n"
+            f"{context['current_chapter_content']}"
+        )
 
     return [
         {"role": "system", "content": system},

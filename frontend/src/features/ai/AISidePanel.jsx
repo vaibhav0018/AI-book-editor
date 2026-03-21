@@ -33,8 +33,14 @@ export default function AISidePanel() {
     }
   }, [lastResult])
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!bookId || !currentChapter) return
+
+    // Persist any user-written notes/brief so the backend sees them
+    if (currentChapter.content?.trim()) {
+      await updateChapterContent(currentChapter.id, currentChapter.content)
+    }
+
     setAiLoading(true, 'writing')
     let content = ''
 

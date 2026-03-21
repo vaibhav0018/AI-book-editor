@@ -67,4 +67,5 @@ def build_chapter_context(db: Session, book_id: str, target_chapter_id: str) -> 
         "chapter_summaries": chapter_summaries,
         "current_chapter_title": target.title,
         "current_chapter_brief": target.brief or "",
+        "current_chapter_content": target.content or "",
     }
