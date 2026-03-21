@@ -2,11 +2,16 @@ import { useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import useBookStore from '@/app/store/bookStore'
 import useEditorStore from '@/app/store/editorStore'
+import ChapterSidebar from './ChapterSidebar'
+import RichTextEditor from '@/components/Editor/RichTextEditor'
+import AISidePanel from '@/features/ai/AISidePanel'
+import { generateOutline } from '@/features/ai/aiApi'
+import { rewriteText } from '@/features/ai/aiApi'
 
 export default function ChapterEditor() {
   const { bookId } = useParams()
-  const { selectedBook, fetchBook } = useBookStore()
-  const { chapters, fetchChapters } = useEditorStore()
+  const { fetchBook, selectedBook } = useBookStore()
+  const { fetchChapters, setAiLoading, currentChapter, setCurrentChapterContent } = useEditorStore()
 
   useEffect(() => {
     if (bookId) {
@@ -15,33 +20,39 @@ export default function ChapterEditor() {
     }
   }, [bookId, fetchBook, fetchChapters])
 
+  const handleGenerateOutline = async () => {
+    if (!bookId) return
+    setAiLoading(true, 'planning')
+    try {
+      await generateOutline(bookId)
+      await fetchChapters(bookId)
+    } catch (err) {
+      alert('Outline generation failed: ' + err.message)
+    } finally {
+      setAiLoading(false, null)
+    }
+  }
+
+  const handleBubbleAction = async (action, selectedText) => {
+    if (!currentChapter || !selectedText) return
+    setAiLoading(true, action)
+    try {
+      const { data } = await rewriteText(currentChapter.id, selectedText, action)
+      const currentContent = currentChapter.content || ''
+      const updated = currentContent.replace(selectedText, data.result)
+      setCurrentChapterContent(updated)
+    } catch (err) {
+      alert('Action failed: ' + err.message)
+    } finally {
+      setAiLoading(false, null)
+    }
+  }
+
   return (
     <div className="flex h-full">
-      {/* Left sidebar — placeholder for ChapterSidebar (Phase 4) */}
-      <aside className="w-60 shrink-0 overflow-y-auto border-r border-border p-4">
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-          {selectedBook?.title || 'Loading...'}
-        </h2>
-        <p className="text-xs text-muted-foreground">{chapters.length} chapters</p>
-        <div className="mt-4 space-y-1">
-          {chapters.map((ch) => (
-            <div key={ch.id} className="rounded px-2 py-1.5 text-sm hover:bg-muted">
-              {ch.title}
-            </div>
-          ))}
-        </div>
-      </aside>
-
-      {/* Center editor — placeholder for TipTap (Phase 4) */}
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        Select a chapter to start editing
-      </div>
-
-      {/* Right AI panel — placeholder (Phase 4) */}
-      <aside className="w-80 shrink-0 overflow-y-auto border-l border-border p-4">
-        <h2 className="text-sm font-semibold text-muted-foreground">AI Assistant</h2>
-        <p className="mt-2 text-xs text-muted-foreground">Coming in Phase 4</p>
-      </aside>
+      <ChapterSidebar bookId={bookId} onGenerateOutline={handleGenerateOutline} />
+      <RichTextEditor onBubbleAction={handleBubbleAction} />
+      <AISidePanel />
     </div>
   )
 }
