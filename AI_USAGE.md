@@ -1,69 +1,50 @@
-# AI Architecture & Memory System
+# AI Tool Usage Disclosure
 
-This document explains how the AI layer works, why it's designed this way, and how it solves the core challenge of long-form writing: keeping the AI consistent across a book that doesn't fit in a single prompt.
+Transparency about how AI tools were used during development.
 
-## The Problem
+## Tools Used
 
-A full novel is 50,000–100,000 words. LLM context windows (even large ones) can't hold an entire book plus instructions. Naively sending "write chapter 10" with all previous chapters would exceed token limits and degrade quality.
+- **Cursor IDE** with Claude as the AI assistant — used throughout development for code generation, debugging, and scaffolding.
+- **OpenAI GPT-4o-mini** — powers the actual product features (outline generation, chapter writing, summarization, rewriting).
 
-## The Solution: Rolling Summary Memory
+## What AI Helped With
 
-Instead of sending the full book, we build a **smart context object** for every AI operation. The `context_builder` module assembles exactly what the AI needs:
+### Scaffolding and boilerplate
+The initial project structure (folder layout, config files, database setup, Alembic migration config) was generated with AI assistance. I described the architecture I wanted and the AI produced the skeleton. I reviewed and adjusted file organization, naming conventions, and import patterns to match my preferences.
 
-1. **Book metadata** — title, genre, concept brief (always included, never changes)
-2. **Global summary** — a ~200-word rolling summary of the entire story so far, updated after every chapter generation
-3. **Previous chapter full text** — only the immediately preceding chapter, for prose continuity
-4. **Chapter summaries** — ~150-word compressed summaries of all other chapters (not full text)
-5. **Current chapter brief** — what this chapter should accomplish
+### Backend CRUD endpoints
+The book and chapter CRUD routes, services, and schemas followed a repetitive pattern. AI generated the initial versions, and I verified they worked correctly by testing each endpoint manually with different payloads, edge cases (missing fields, invalid IDs, cascade deletes).
 
-This keeps token usage bounded regardless of book length, while giving the AI enough context to maintain character arcs, plot threads, and thematic consistency.
+### Prompt templates
+I wrote the prompt structures myself — deciding what context goes into each prompt, how to format the system message, what instructions to give the AI for each agent role. The actual Python string formatting code was assisted by AI, but the prompt engineering decisions (what to include, what to compress, how to instruct) were mine.
 
-## Auto-Summarization Pipeline
+### Frontend components
+AI helped generate the initial component code (React + Tailwind). I specified the layout, interactions, and state management approach. The TipTap editor integration required some back-and-forth — the bubble menu import path changed between TipTap versions and I had to debug that.
 
-After every chapter generation, the system automatically:
+## What I Did Myself
 
-1. Saves the generated chapter content
-2. Runs the **summarizer agent** to compress the chapter to ~150 words
-3. Updates the chapter's `summary` field in the database
-4. Runs the summarizer again to update the book's `global_summary`
-5. Logs everything to the `ai_actions` audit table
+### Architecture decisions
+The choice to use a rolling summary memory system, the four-agent pattern, the context builder design, and the auto-summarization pipeline — these were my design decisions based on thinking through the core problem of long-form context management. I researched how context windows work, what information is actually needed for chapter-to-chapter consistency, and how to keep token usage bounded.
 
-This happens transparently — the author never sees the summaries directly, but the AI uses them for every subsequent operation.
+### Memory system design
+The `context_builder` module — deciding that each AI call gets book metadata + global summary + chapter summaries + previous chapter full text + current brief — that tradeoff was mine. Sending the full previous chapter (not just its summary) was a deliberate choice for prose continuity, and compressing everything else was the tradeoff to stay within token limits.
 
-## Agent Design
+### LLM fallback strategy
+The decision to support both OpenAI and Ollama with automatic failover came from wanting the app to work even without an API key (using a local model). The routing logic and error handling around this were designed by me.
 
-Four single-responsibility agents, each with its own prompt template:
+### Debugging and integration
+Connecting all the pieces — making sure the post-generation pipeline (save → summarize → update global summary → audit log) runs correctly after streaming completes, fixing CORS issues, resolving SQLAlchemy relationship errors, handling SSE streaming on both backend and frontend — this was hands-on debugging work.
 
-| Agent | Purpose | Trigger |
-|-------|---------|---------|
-| **Planner** | Generates chapter outline (JSON) from book concept | "Generate Outline" button |
-| **Writer** | Writes full chapter draft from context | "Generate Chapter" (streams via SSE) |
-| **Summarizer** | Compresses chapter to ~150-word memory | Auto-runs after generation |
-| **Editor** | Rewrites/improves/continues selected text | Bubble menu or side panel actions |
+### Product decisions
+The UX flow (dashboard → outline → chapter selection → generation → editing), the 3-panel layout choice, the accept/reject pattern for AI suggestions, the step indicator during generation — these reflect my thinking about what an author would actually need.
 
-## LLM Fallback Chain
+## How I Validated AI-Generated Code
 
-The `LLMClient` tries OpenAI GPT-4o first. If the API key is missing, the service is down, or rate limits hit, it falls back to a local Ollama instance running `qwen2.5:7b`. Both providers use the same interface, so agents don't need to know which model is responding.
+- Every backend endpoint was tested manually via PowerShell/curl before moving on.
+- The AI endpoints were tested end-to-end: creating a book, generating an outline, generating chapters, verifying summaries and global summary updates, testing rewrite actions.
+- The frontend was build-tested (`npm run build`) after each major change to catch import errors and type issues.
+- When AI-generated code had bugs (SQLAlchemy relationship resolution, TipTap import paths, CORS middleware ordering), I debugged and fixed them rather than regenerating.
 
-```
-Request → LLMClient.complete()
-           ├── Try OpenAI GPT-4o
-           │    └── Success → return response
-           └── Fallback → Ollama qwen2.5:7b
-                └── return response
-```
+## Summary
 
-## Audit Trail
-
-Every AI operation is logged in the `ai_actions` table:
-
-- **action_type** — generate, rewrite, summarize, improve, continue
-- **context_snapshot** — what context was sent to the AI (truncated)
-- **output** — what the AI returned (truncated)
-- **model_used** — which model actually responded (gpt-4o or qwen2.5)
-
-This provides free version history and makes AI outputs reproducible for debugging.
-
-## Streaming
-
-Chapter generation uses Server-Sent Events (SSE). The backend streams tokens as they arrive from the LLM, and the frontend appends them to the TipTap editor in real-time. After the stream completes, the post-processing pipeline (save, summarize, update memory) runs automatically.
+AI was a productivity multiplier, especially for boilerplate and repetitive patterns. The architectural thinking, memory system design, prompt engineering, and debugging were primarily my own work. I used AI as a tool, not as a replacement for understanding what the code does and why.
