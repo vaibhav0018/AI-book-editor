@@ -6,7 +6,8 @@ const useEditorStore = create((set, get) => ({
   currentChapter: null,
   saveStatus: 'saved', // 'saved' | 'saving' | 'unsaved'
   aiLoading: false,
-  aiStep: null, // 'planning' | 'writing' | 'summarizing' | null
+  aiStep: null,
+  contentSyncKey: 0,
 
   fetchChapters: async (bookId) => {
     const { data } = await apiClient.get(`/api/books/${bookId}/chapters`)
@@ -60,6 +61,7 @@ const useEditorStore = create((set, get) => ({
     set((state) => ({
       currentChapter: state.currentChapter ? { ...state.currentChapter, content } : null,
       saveStatus: 'unsaved',
+      contentSyncKey: state.contentSyncKey + 1,
     })),
 }))
 

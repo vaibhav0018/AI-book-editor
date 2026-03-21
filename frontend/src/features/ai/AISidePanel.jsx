@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import useEditorStore from '@/app/store/editorStore'
 import useBookStore from '@/app/store/bookStore'
 import { streamGenerateChapter, rewriteText, summarizeChapter } from './aiApi'
-import StepIndicator from '@/components/ui/StepIndicator'
 import { useToast } from '@/components/ui/Toast'
 
 const ACTIONS = [
@@ -19,7 +18,7 @@ function stripHtml(html) {
 }
 
 export default function AISidePanel() {
-  const { currentChapter, setAiLoading, aiLoading, aiStep, setCurrentChapterContent, fetchChapters } = useEditorStore()
+  const { currentChapter, setAiLoading, aiLoading, aiStep, setCurrentChapterContent, updateChapterContent, fetchChapters } = useEditorStore()
   const { selectedBook, fetchBook } = useBookStore()
   const [lastResult, setLastResult] = useState(null)
   const [abortFn, setAbortFn] = useState(null)
@@ -106,17 +105,22 @@ export default function AISidePanel() {
   const applyResult = () => {
     if (!lastResult) return
 
+    let newContent = null
     if (lastResult.action === 'continue') {
       const existing = currentChapter.content || ''
-      const appended = existing + `<p>${lastResult.text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
-      setCurrentChapterContent(appended)
+      newContent = existing + `<p>${lastResult.text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
+      setCurrentChapterContent(newContent)
       toast.success('Continuation added to chapter')
     } else if (lastResult.action === 'summarize') {
       toast.info('Summary saved to memory')
     } else {
-      const wrappedHtml = `<p>${lastResult.text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
-      setCurrentChapterContent(wrappedHtml)
+      newContent = `<p>${lastResult.text.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
+      setCurrentChapterContent(newContent)
       toast.success('Changes applied to editor')
+    }
+
+    if (newContent && currentChapter?.id) {
+      updateChapterContent(currentChapter.id, newContent)
     }
     setLastResult(null)
   }
@@ -164,8 +168,25 @@ export default function AISidePanel() {
               </div>
             )}
 
-            {/* Step indicator */}
-            {aiLoading && <StepIndicator currentStep={aiStep} />}
+            {/* Loading overlay */}
+            {aiLoading && (
+              <div className="flex items-center gap-3 rounded-xl border border-warm-light bg-warm-light/40 p-3">
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                <div>
+                  <p className="text-xs font-medium text-foreground">
+                    {aiStep === 'writing' && 'Generating chapter...'}
+                    {aiStep === 'planning' && 'Planning outline...'}
+                    {aiStep === 'summarizing' && 'Summarizing...'}
+                    {aiStep === 'continue' && 'Continuing your story...'}
+                    {aiStep === 'rewrite' && 'Rewriting chapter...'}
+                    {aiStep === 'improve' && 'Improving prose...'}
+                    {aiStep === 'change_tone' && 'Adjusting tone...'}
+                    {!aiStep && 'Working...'}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">This may take a few seconds</p>
+                </div>
+              </div>
+            )}
 
             {/* Generate section */}
             <section>
@@ -196,20 +217,29 @@ export default function AISidePanel() {
                 <span>✏️</span> Edit Chapter
               </h3>
               <div className="space-y-1.5">
-                {ACTIONS.map(({ key, label, icon, desc }) => (
-                  <button
-                    key={key}
-                    onClick={() => handleAction(key)}
-                    disabled={aiLoading || !currentChapter.content}
-                    className="flex w-full items-start gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left hover:border-primary/40 hover:bg-primary/5 disabled:opacity-40"
-                  >
-                    <span className="mt-0.5 text-sm">{icon}</span>
-                    <div>
-                      <span className="text-xs font-medium text-foreground">{label}</span>
-                      <p className="text-[10px] leading-tight text-muted-foreground">{desc}</p>
-                    </div>
-                  </button>
-                ))}
+                {ACTIONS.map(({ key, label, icon, desc }) => {
+                  const isActive = aiLoading && aiStep === key
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => handleAction(key)}
+                      disabled={aiLoading || !currentChapter.content}
+                      className={`flex w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left transition-all disabled:opacity-40 ${
+                        isActive
+                          ? 'border-primary/40 bg-primary/10'
+                          : 'border-border bg-card hover:border-primary/40 hover:bg-primary/5'
+                      }`}
+                    >
+                      <span className="mt-0.5 text-sm">
+                        {isActive ? <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" /> : icon}
+                      </span>
+                      <div>
+                        <span className="text-xs font-medium text-foreground">{isActive ? `${label}ing...` : label}</span>
+                        <p className="text-[10px] leading-tight text-muted-foreground">{desc}</p>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </section>
 

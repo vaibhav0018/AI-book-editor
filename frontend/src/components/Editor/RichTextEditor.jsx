@@ -14,8 +14,9 @@ const BUBBLE_ACTIONS = [
 ]
 
 export default function RichTextEditor({ onBubbleAction }) {
-  const { currentChapter, saveStatus, updateChapterContent, setCurrentChapterContent, aiLoading } = useEditorStore()
+  const { currentChapter, saveStatus, updateChapterContent, setCurrentChapterContent, aiLoading, contentSyncKey } = useEditorStore()
   const debounceRef = useRef(null)
+  const isLocalEdit = useRef(false)
 
   const editor = useEditor({
     extensions: [
@@ -31,7 +32,9 @@ export default function RichTextEditor({ onBubbleAction }) {
     },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML()
+      isLocalEdit.current = true
       setCurrentChapterContent(html)
+      requestAnimationFrame(() => { isLocalEdit.current = false })
 
       if (debounceRef.current) clearTimeout(debounceRef.current)
       debounceRef.current = setTimeout(() => {
@@ -42,7 +45,7 @@ export default function RichTextEditor({ onBubbleAction }) {
     },
   })
 
-  // Sync editor content when switching chapters
+  // Sync editor when switching chapters
   useEffect(() => {
     if (editor && currentChapter) {
       const incoming = currentChapter.content || ''
@@ -52,13 +55,15 @@ export default function RichTextEditor({ onBubbleAction }) {
     }
   }, [editor, currentChapter?.id])
 
-  // Sync streamed AI content into editor in real-time
+  // Sync from store → editor whenever content changes externally
+  // (AI streaming, apply result, etc.) but NOT from user typing
   useEffect(() => {
-    if (editor && currentChapter && aiLoading) {
-      const incoming = currentChapter.content || ''
+    if (!editor || !currentChapter || isLocalEdit.current) return
+    const incoming = currentChapter.content || ''
+    if (editor.getHTML() !== incoming) {
       editor.commands.setContent(incoming, false)
     }
-  }, [editor, currentChapter?.content, aiLoading])
+  }, [editor, currentChapter?.content, contentSyncKey])
 
   useEffect(() => () => clearTimeout(debounceRef.current), [])
 
@@ -79,7 +84,6 @@ export default function RichTextEditor({ onBubbleAction }) {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-card">
-      {/* Chapter title bar */}
       <div className="flex items-center justify-between border-b border-border/40 px-6 py-2">
         <span className="text-sm font-medium text-foreground">{currentChapter.title}</span>
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
