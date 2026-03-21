@@ -38,6 +38,10 @@ _ACTION_INSTRUCTIONS = {
         "Roughly double the length while staying on topic. "
         "Return ONLY the expanded text."
     ),
+    "custom_edit": (
+        "Edit the selected text according to the user's custom instruction below. "
+        "Return ONLY the edited text."
+    ),
 }
 
 
@@ -47,6 +51,7 @@ def build_editor_messages(
     chapter_title: Optional[str] = None,
     chapter_brief: Optional[str] = None,
     tone: Optional[str] = None,
+    custom_instruction: Optional[str] = None,
 ) -> List[Dict[str, str]]:
     """Return messages for the editor agent based on the requested action."""
     instruction = _ACTION_INSTRUCTIONS.get(action)
@@ -65,6 +70,8 @@ def build_editor_messages(
         user_parts.insert(1, f"Chapter intent: {chapter_brief}")
     if tone and action == "change_tone":
         user_parts.append(f"Target tone: {tone}")
+    if custom_instruction and action == "custom_edit":
+        user_parts.append(f"Instruction: {custom_instruction}")
 
     return [
         {"role": "system", "content": system},

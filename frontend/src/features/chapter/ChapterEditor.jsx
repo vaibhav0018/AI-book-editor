@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/Toast'
 export default function ChapterEditor() {
   const { bookId } = useParams()
   const { fetchBook, selectedBook } = useBookStore()
-  const { fetchChapters, setAiLoading, currentChapter, setCurrentChapterContent } = useEditorStore()
+  const { fetchChapters, setAiLoading, currentChapter, setCurrentChapterContent, updateChapterContent } = useEditorStore()
   const toast = useToast()
 
   useEffect(() => {
@@ -34,14 +34,16 @@ export default function ChapterEditor() {
     }
   }
 
-  const handleBubbleAction = async (action, selectedText) => {
+  const handleBubbleAction = async (action, selectedText, customInstruction = null) => {
     if (!currentChapter || !selectedText) return
     setAiLoading(true, action)
     try {
-      const { data } = await rewriteText(currentChapter.id, selectedText, action)
+      const { data } = await rewriteText(currentChapter.id, selectedText, action, null, customInstruction)
       const currentContent = currentChapter.content || ''
       const updated = currentContent.replace(selectedText, data.result)
       setCurrentChapterContent(updated)
+      updateChapterContent(currentChapter.id, updated)
+      toast.success(action === 'custom_edit' ? 'Custom edit applied' : `${action.replace('_', ' ')} applied`)
     } catch (err) {
       toast.error('Action failed: ' + err.message)
     } finally {

@@ -12,6 +12,7 @@ async def edit_text(
     chapter_title: Optional[str] = None,
     chapter_brief: Optional[str] = None,
     tone: Optional[str] = None,
+    custom_instruction: Optional[str] = None,
 ) -> tuple[str, str]:
     """Return (edited_text, model_used)."""
     messages = build_editor_messages(
@@ -20,6 +21,7 @@ async def edit_text(
         chapter_title=chapter_title,
         chapter_brief=chapter_brief,
         tone=tone,
+        custom_instruction=custom_instruction,
     )
     result, model_used = await llm_client.complete(messages, stream=False, temperature=0.6)
     return result.strip(), model_used

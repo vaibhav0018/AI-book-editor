@@ -72,6 +72,7 @@ async def rewrite_text(payload: EditorActionRequest, db: Session = Depends(get_d
         action=payload.action,
         selected_text=payload.selected_text,
         tone=payload.tone,
+        custom_instruction=payload.custom_instruction,
     )
     return EditorActionResponse(result=result, model_used=model_used)
 

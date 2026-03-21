@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { BubbleMenu } from '@tiptap/react/menus'
 import StarterKit from '@tiptap/starter-kit'
@@ -17,6 +17,9 @@ export default function RichTextEditor({ onBubbleAction }) {
   const { currentChapter, saveStatus, updateChapterContent, setCurrentChapterContent, aiLoading, contentSyncKey } = useEditorStore()
   const debounceRef = useRef(null)
   const isLocalEdit = useRef(false)
+  const [showCustomInput, setShowCustomInput] = useState(false)
+  const [customPrompt, setCustomPrompt] = useState('')
+  const customInputRef = useRef(null)
 
   const editor = useEditor({
     extensions: [
@@ -45,7 +48,6 @@ export default function RichTextEditor({ onBubbleAction }) {
     },
   })
 
-  // Sync editor when switching chapters
   useEffect(() => {
     if (editor && currentChapter) {
       const incoming = currentChapter.content || ''
@@ -55,8 +57,6 @@ export default function RichTextEditor({ onBubbleAction }) {
     }
   }, [editor, currentChapter?.id])
 
-  // Sync from store → editor whenever content changes externally
-  // (AI streaming, apply result, etc.) but NOT from user typing
   useEffect(() => {
     if (!editor || !currentChapter || isLocalEdit.current) return
     const incoming = currentChapter.content || ''
@@ -67,11 +67,24 @@ export default function RichTextEditor({ onBubbleAction }) {
 
   useEffect(() => () => clearTimeout(debounceRef.current), [])
 
+  useEffect(() => {
+    if (showCustomInput && customInputRef.current) {
+      customInputRef.current.focus()
+    }
+  }, [showCustomInput])
+
   const getSelectedText = useCallback(() => {
     if (!editor) return ''
     const { from, to } = editor.state.selection
     return editor.state.doc.textBetween(from, to, ' ')
   }, [editor])
+
+  const handleCustomSubmit = () => {
+    if (!customPrompt.trim()) return
+    onBubbleAction?.('custom_edit', getSelectedText(), customPrompt.trim())
+    setCustomPrompt('')
+    setShowCustomInput(false)
+  }
 
   if (!currentChapter) {
     return (
@@ -101,17 +114,55 @@ export default function RichTextEditor({ onBubbleAction }) {
 
       <div className="flex-1 overflow-y-auto">
         {editor && (
-          <BubbleMenu editor={editor} tippyOptions={{ duration: 150 }}>
-            <div className="animate-slide-up flex items-center gap-0.5 rounded-xl border border-border bg-card p-1 shadow-xl">
-              {BUBBLE_ACTIONS.map(({ key, label, icon }) => (
+          <BubbleMenu editor={editor} tippyOptions={{ duration: 150, maxWidth: 420 }}>
+            <div className="animate-slide-up rounded-xl border border-border bg-card shadow-xl">
+              <div className="flex items-center gap-0.5 p-1">
+                {BUBBLE_ACTIONS.map(({ key, label, icon }) => (
+                  <button
+                    key={key}
+                    onClick={() => { setShowCustomInput(false); onBubbleAction?.(key, getSelectedText()) }}
+                    className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-foreground/80 hover:bg-primary/10 hover:text-primary"
+                  >
+                    <span className="text-[10px]">{icon}</span> {label}
+                  </button>
+                ))}
+                <div className="mx-0.5 h-4 w-px bg-border" />
                 <button
-                  key={key}
-                  onClick={() => onBubbleAction?.(key, getSelectedText())}
-                  className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-foreground/80 hover:bg-primary/10 hover:text-primary"
+                  onClick={() => setShowCustomInput(!showCustomInput)}
+                  className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                    showCustomInput
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-foreground/80 hover:bg-primary/10 hover:text-primary'
+                  }`}
                 >
-                  <span className="text-[10px]">{icon}</span> {label}
+                  <span className="text-[10px]">💬</span> Edit
                 </button>
-              ))}
+              </div>
+
+              {showCustomInput && (
+                <div className="border-t border-border/60 p-1.5">
+                  <div className="flex gap-1">
+                    <input
+                      ref={customInputRef}
+                      value={customPrompt}
+                      onChange={(e) => setCustomPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleCustomSubmit()
+                        if (e.key === 'Escape') { setShowCustomInput(false); setCustomPrompt('') }
+                      }}
+                      placeholder="e.g. Make it more dramatic..."
+                      className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                    <button
+                      onClick={handleCustomSubmit}
+                      disabled={!customPrompt.trim()}
+                      className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-40"
+                    >
+                      Go
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </BubbleMenu>
         )}

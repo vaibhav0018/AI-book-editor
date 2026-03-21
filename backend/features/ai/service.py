@@ -105,6 +105,7 @@ async def finalize_chapter_generation(
 async def run_editor_action(
     db: Session, chapter_id: str, action: str,
     selected_text: str, tone: str = None,
+    custom_instruction: str = None,
 ) -> tuple[str, str]:
     """Run an editor agent action and persist the audit record."""
     chapter = get_chapter(db, chapter_id)
@@ -115,6 +116,7 @@ async def run_editor_action(
         chapter_title=chapter.title,
         chapter_brief=chapter.brief,
         tone=tone,
+        custom_instruction=custom_instruction,
     )
 
     _save_ai_action(

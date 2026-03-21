@@ -3,12 +3,13 @@ import apiClient from '@/lib/apiClient'
 export const generateOutline = (bookId) =>
   apiClient.post('/api/ai/outline', { book_id: bookId })
 
-export const rewriteText = (chapterId, selectedText, action, tone = null) =>
+export const rewriteText = (chapterId, selectedText, action, tone = null, customInstruction = null) =>
   apiClient.post('/api/ai/rewrite', {
     chapter_id: chapterId,
     selected_text: selectedText,
     action,
     tone,
+    custom_instruction: customInstruction,
   })
 
 export const summarizeChapter = (chapterId) =>

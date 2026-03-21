@@ -33,8 +33,9 @@ class GenerateChapterRequest(BaseModel):
 class EditorActionRequest(BaseModel):
     chapter_id: str
     selected_text: str
-    action: str = Field(..., pattern="^(rewrite|improve|continue|summarize|change_tone|make_shorter|make_longer)$")
+    action: str = Field(..., pattern="^(rewrite|improve|continue|summarize|change_tone|make_shorter|make_longer|custom_edit)$")
     tone: Optional[str] = None
+    custom_instruction: Optional[str] = None
 
 
 class EditorActionResponse(BaseModel):
