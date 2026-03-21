@@ -2,6 +2,7 @@ import { useState } from 'react'
 import useEditorStore from '@/app/store/editorStore'
 import useBookStore from '@/app/store/bookStore'
 import { cn } from '@/lib/utils'
+import { useToast } from '@/components/ui/Toast'
 
 const STATUS_DOT = {
   empty: 'bg-border',
@@ -15,14 +16,37 @@ export default function ChapterSidebar({ bookId, onGenerateOutline }) {
     createChapter, deleteChapter, aiLoading,
   } = useEditorStore()
   const { selectedBook } = useBookStore()
+  const toast = useToast()
   const [adding, setAdding] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [exporting, setExporting] = useState(false)
 
   const handleAdd = async () => {
     if (!newTitle.trim()) return
     await createChapter(bookId, { title: newTitle.trim() })
     setNewTitle('')
     setAdding(false)
+  }
+
+  const handleExportPdf = async () => {
+    setExporting(true)
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+      const res = await fetch(`${baseUrl}/api/books/${bookId}/export/pdf`)
+      if (!res.ok) throw new Error('Export failed')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${selectedBook?.title || 'book'}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('PDF downloaded')
+    } catch (err) {
+      toast.error('PDF export failed: ' + err.message)
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -115,6 +139,21 @@ export default function ChapterSidebar({ bookId, onGenerateOutline }) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Export */}
+      <div className="border-t border-border/60 p-3">
+        <button
+          onClick={handleExportPdf}
+          disabled={exporting || chapters.length === 0}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground hover:bg-muted disabled:opacity-40"
+        >
+          {exporting ? (
+            <><span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" /> Exporting...</>
+          ) : (
+            <><span>📄</span> Download PDF</>
+          )}
+        </button>
       </div>
     </aside>
   )

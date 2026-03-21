@@ -2,11 +2,13 @@
 
 from typing import List
 from fastapi import APIRouter, Depends, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from database import get_db
 from features.book import service
 from features.book.schemas import BookCreate, BookUpdate, BookResponse, BookListResponse
+from features.book.export_pdf import generate_book_pdf
 
 router = APIRouter(prefix="/api/books", tags=["books"])
 
@@ -39,3 +41,16 @@ async def update_book(book_id: str, payload: BookUpdate, db: Session = Depends(g
 async def delete_book(book_id: str, db: Session = Depends(get_db)):
     """Delete a book and all its chapters."""
     service.delete_book(db, book_id)
+
+
+@router.get("/{book_id}/export/pdf")
+async def export_book_pdf(book_id: str, db: Session = Depends(get_db)):
+    """Download the full book as a PDF."""
+    pdf_bytes = generate_book_pdf(db, book_id)
+    book = service.get_book(db, book_id)
+    filename = f"{book.title.replace(' ', '_')}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
