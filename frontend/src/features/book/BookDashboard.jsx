@@ -4,6 +4,17 @@ import useBookStore from '@/app/store/bookStore'
 import CreateBookModal from './CreateBookModal'
 import { formatDate } from '@/lib/utils'
 
+const GENRE_ICONS = {
+  fantasy: '🏰',
+  'sci-fi': '🚀',
+  romance: '💕',
+  mystery: '🔍',
+  thriller: '🔪',
+  horror: '👻',
+  fiction: '📖',
+  'non-fiction': '📚',
+}
+
 export default function BookDashboard() {
   const { books, loading, fetchBooks, createBook, deleteBook } = useBookStore()
   const [modalOpen, setModalOpen] = useState(false)
@@ -19,54 +30,71 @@ export default function BookDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-8">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Your Books</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Create and manage your book projects</p>
-        </div>
+    <div className="mx-auto max-w-4xl px-6 py-12">
+      <div className="mb-10 text-center">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Your Library</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Every great story starts with a single idea.
+        </p>
+      </div>
+
+      <div className="mb-8 flex justify-center">
         <button
           onClick={() => setModalOpen(true)}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="group flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 hover:shadow-md"
         >
-          + New Book
+          <span className="text-base transition-transform group-hover:scale-110">✦</span>
+          Start a New Book
         </button>
       </div>
 
       {loading && books.length === 0 ? (
-        <div className="py-20 text-center text-muted-foreground">Loading...</div>
+        <div className="py-20 text-center">
+          <div className="mx-auto h-8 w-8 animate-pulse-soft rounded-full bg-warm-light" />
+          <p className="mt-4 text-sm text-muted-foreground">Loading your books...</p>
+        </div>
       ) : books.length === 0 ? (
-        <div className="rounded-lg border-2 border-dashed border-border py-20 text-center">
-          <p className="text-muted-foreground">No books yet. Create your first one!</p>
+        <div className="mx-auto max-w-md rounded-xl border-2 border-dashed border-border py-16 text-center">
+          <span className="text-4xl">📝</span>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Your library is empty. Create your first book to get started.
+          </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {books.map((book) => (
             <div
               key={book.id}
-              className="group cursor-pointer rounded-lg border border-border p-5 transition hover:border-primary hover:shadow-md"
               onClick={() => navigate(`/book/${book.id}`)}
+              className="animate-slide-up group cursor-pointer rounded-xl border border-border bg-card p-5 shadow-sm hover:border-primary/40 hover:shadow-md"
             >
-              <h3 className="font-semibold group-hover:text-primary">{book.title}</h3>
+              <div className="mb-3 flex items-start justify-between">
+                <span className="text-2xl">{GENRE_ICONS[book.genre?.toLowerCase()] || '📖'}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (confirm('Delete this book permanently?')) deleteBook(book.id)
+                  }}
+                  className="rounded p-1 text-xs text-muted-foreground opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                >
+                  ✕
+                </button>
+              </div>
+              <h3 className="font-semibold leading-tight text-foreground group-hover:text-primary">
+                {book.title}
+              </h3>
               {book.genre && (
-                <span className="mt-1 inline-block rounded-full bg-accent px-2 py-0.5 text-xs text-accent-foreground">
+                <span className="mt-1.5 inline-block rounded-full bg-warm-light px-2.5 py-0.5 text-[11px] font-medium text-accent-foreground">
                   {book.genre}
                 </span>
               )}
               {book.brief && (
-                <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{book.brief}</p>
+                <p className="mt-2.5 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
+                  {book.brief}
+                </p>
               )}
-              <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                <span>{formatDate(book.created_at)}</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (confirm('Delete this book?')) deleteBook(book.id)
-                  }}
-                  className="opacity-0 transition hover:text-destructive group-hover:opacity-100"
-                >
-                  Delete
-                </button>
+              <div className="mt-4 border-t border-border/60 pt-3">
+                <span className="text-[11px] text-muted-foreground">{formatDate(book.created_at)}</span>
               </div>
             </div>
           ))}
