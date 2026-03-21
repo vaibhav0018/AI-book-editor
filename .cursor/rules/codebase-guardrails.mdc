@@ -1,0 +1,35 @@
+---
+description: Protect codebase — minimal diffs, no cross-feature drift, ask before broad changes
+alwaysApply: true
+---
+
+# Codebase guardrails (read before editing)
+
+These rules apply to **every** task. They prevent one feature’s work from silently rewriting unrelated parts of the repo.
+
+## Scope and diffs
+
+- **Change only what the user asked for.** Implement the smallest diff that satisfies the request.
+- **No drive-by refactors**: do not rename variables, reformat whole files, “clean up” imports, or reorganize folders outside the files you must touch for the task.
+- **No unrelated files**: do not edit `README.md`, `AI_USAGE.md`, `BUILD_PLAN.md`, tests, or config unless the user (or the task) explicitly includes them.
+- **Preserve existing behavior** unless the user asked to change or remove it. Do not delete comments, features, or endpoints “because they look unused” without confirmation.
+
+## Architecture boundaries
+
+- Respect **feature-based layout**: backend `features/<book|chapter|ai>/`; frontend `features/<area>/` + `app/store/` + `lib/`. Do not put book logic inside `features/ai/` or vice versa without a clear reason and user alignment.
+- **Ask before** any change that contradicts `BUILD_PLAN.md` or `.cursor/rules/book-editor-overview.mdc` (stack, memory model, thin routers).
+- **New capabilities** should extend the existing pattern (service → router → optional agent/prompt), not introduce a parallel stack.
+
+## Safety and hygiene
+
+- **Never commit or paste secrets** (API keys, `.env`). Use `.env.example` for new env vars only.
+- **Dependencies**: add to `requirements.txt` / `package.json` with a short reason; prefer pinned ranges consistent with the repo.
+- If a fix **must** touch more than one feature area, **say so in the response** and keep each area’s changes minimal and reviewable.
+
+## When to stop and ask
+
+- The user’s request is ambiguous and multiple modules could be affected.
+- A “quick fix” would require changing shared types, global middleware, or store shape used across the app.
+- You are about to remove or replace a user-visible behavior (routes, exports, PDF/AI flows) not mentioned in the prompt.
+
+**Default:** narrow change, one concern, same style as surrounding code. **Escalate** to the user for anything broader.

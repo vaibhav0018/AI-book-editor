@@ -5,6 +5,8 @@ alwaysApply: true
 
 # AI Book Editor — Project Rules
 
+**Change discipline:** See `.cursor/rules/codebase-guardrails.mdc` (minimal diffs, no unrelated refactors, ask before cross-cutting changes).
+
 ## Stack
 - **Backend**: Python 3.11+, FastAPI, SQLAlchemy, SQLite (`book_editor.db`), Alembic, Pydantic v2, httpx, python-dotenv, OpenAI SDK.
 - **Frontend** (later): React 18 + Vite, TipTap v2, Zustand, Tailwind + shadcn, React Router v6, Axios.
