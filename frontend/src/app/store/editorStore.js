@@ -9,15 +9,17 @@ const useEditorStore = create((set, get) => ({
   aiStep: null,
   contentSyncKey: 0,
 
+  resetForBook: () => set({ chapters: [], currentChapter: null, saveStatus: 'saved', aiLoading: false, aiStep: null }),
+
   fetchChapters: async (bookId) => {
     const { data } = await apiClient.get(`/api/books/${bookId}/chapters`)
     set({ chapters: data })
   },
 
-  selectChapter: async (chapterId) => {
+  selectChapter: async (chapterId, bookId) => {
     const { data } = await apiClient.get(`/api/chapters/${chapterId}`)
     set({ currentChapter: data, saveStatus: 'saved' })
-    try { sessionStorage.setItem('lastChapterId', chapterId) } catch {}
+    try { sessionStorage.setItem(`lastChapterId:${bookId || data.book_id}`, chapterId) } catch {}
   },
 
   updateChapterContent: async (chapterId, content) => {
