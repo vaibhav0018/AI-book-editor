@@ -3,7 +3,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import settings
 from middleware.error_handler import ErrorHandlerMiddleware
 from features.book.router import router as book_router
 from features.chapter.router import router as chapter_router
@@ -23,15 +22,13 @@ def create_app() -> FastAPI:
         version="0.1.0",
     )
 
-    # Middleware (order matters — outermost first)
-    application.add_middleware(ErrorHandlerMiddleware)
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.CORS_ORIGINS.split(","),
-        allow_credentials=True,
+        allow_origins=["*"],
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    application.add_middleware(ErrorHandlerMiddleware)
 
     # Routers
     application.include_router(book_router)
