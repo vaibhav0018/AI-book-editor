@@ -20,9 +20,9 @@ export function ToastProvider({ children }) {
           <div
             key={t.id}
             className={cn(
-              'animate-in fade-in slide-in-from-bottom-2 rounded-md px-4 py-2.5 text-sm shadow-lg',
+              'animate-slide-up rounded-lg px-4 py-2.5 text-sm font-medium shadow-lg',
               t.type === 'error' && 'bg-destructive text-destructive-foreground',
-              t.type === 'success' && 'bg-green-600 text-white',
+              t.type === 'success' && 'bg-primary text-primary-foreground',
               t.type === 'info' && 'bg-foreground text-background',
             )}
           >
