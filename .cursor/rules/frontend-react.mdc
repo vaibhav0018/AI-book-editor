@@ -1,0 +1,13 @@
+---
+description: React frontend — Zustand, API layers, Tailwind, TipTap
+globs: frontend/**/*.{js,jsx,ts,tsx}
+alwaysApply: false
+---
+
+# Frontend Conventions
+
+- **No heavy business logic in components** — use Zustand stores (`app/store/`) and feature `*Api.js` files.
+- **All HTTP** through `lib/apiClient.js` and feature-level APIs (`bookApi.js`, `chapterApi.js`, `aiApi.js`).
+- **Tailwind only** for styling; reuse shadcn `components/ui/`.
+- **TipTap**: single reusable `RichTextEditor.jsx` wrapper; extensions colocated under `components/Editor/` as needed.
+- Routes in `app/routes.jsx`; shell layout in `components/Layout/`.

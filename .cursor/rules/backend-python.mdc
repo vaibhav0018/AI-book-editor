@@ -1,0 +1,15 @@
+---
+description: FastAPI backend conventions — services, async, schemas
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# Backend Conventions
+
+- All route handlers **async**. DB and LLM I/O via async-compatible patterns.
+- **Services** own business logic; routers validate with Pydantic and delegate.
+- **Pydantic v2** for every request/response body; SQLAlchemy models separate from schemas.
+- **Docstrings** on public functions and service methods.
+- Use correct **HTTP status codes**; errors flow through global middleware (`middleware/error_handler.py`).
+- Env via `config.py` / Pydantic Settings; never hardcode secrets.
+- New AI behavior: add or extend **agents** + **prompts**; wire through `features/ai/service.py`, not routers.

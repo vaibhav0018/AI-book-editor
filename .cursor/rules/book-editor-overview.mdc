@@ -1,0 +1,21 @@
+---
+description: Book editor project — stack, build order, memory architecture
+alwaysApply: true
+---
+
+# AI Book Editor — Project Rules
+
+## Stack
+- **Backend**: Python 3.11+, FastAPI, SQLAlchemy, SQLite (`book_editor.db`), Alembic, Pydantic v2, httpx, python-dotenv, OpenAI SDK.
+- **Frontend** (later): React 18 + Vite, TipTap v2, Zustand, Tailwind + shadcn, React Router v6, Axios.
+
+## Architecture
+- **Modular monolith**: Each feature owns `router.py`, `service.py`, `models.py`, `schemas.py`. AI lives in `features/ai/`; prompts in `prompts/`; memory in `memory/`.
+- **Thin routers**: Business logic in services only. No AI logic in route handlers.
+- **Memory**: Use `context_builder.build_chapter_context` — book brief + `global_summary` + prior chapter full text + other chapters’ summaries only. Do not full-book prompt.
+
+## Build order
+Follow `BUILD_PLAN.md` phases strictly. Complete backend CRUD (Phase 1) before frontend. **Ask the user before any architectural change** that differs from `BUILD_PLAN.md`.
+
+## LLM
+- Router: OpenAI `gpt-4o` first; fallback Ollama `qwen2.5:7b` if no key or rate limit.
