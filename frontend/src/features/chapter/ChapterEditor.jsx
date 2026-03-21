@@ -5,13 +5,14 @@ import useEditorStore from '@/app/store/editorStore'
 import ChapterSidebar from './ChapterSidebar'
 import RichTextEditor from '@/components/Editor/RichTextEditor'
 import AISidePanel from '@/features/ai/AISidePanel'
-import { generateOutline } from '@/features/ai/aiApi'
-import { rewriteText } from '@/features/ai/aiApi'
+import { generateOutline, rewriteText } from '@/features/ai/aiApi'
+import { useToast } from '@/components/ui/Toast'
 
 export default function ChapterEditor() {
   const { bookId } = useParams()
   const { fetchBook, selectedBook } = useBookStore()
   const { fetchChapters, setAiLoading, currentChapter, setCurrentChapterContent } = useEditorStore()
+  const toast = useToast()
 
   useEffect(() => {
     if (bookId) {
@@ -27,7 +28,7 @@ export default function ChapterEditor() {
       await generateOutline(bookId)
       await fetchChapters(bookId)
     } catch (err) {
-      alert('Outline generation failed: ' + err.message)
+      toast.error('Outline generation failed: ' + err.message)
     } finally {
       setAiLoading(false, null)
     }
@@ -42,7 +43,7 @@ export default function ChapterEditor() {
       const updated = currentContent.replace(selectedText, data.result)
       setCurrentChapterContent(updated)
     } catch (err) {
-      alert('Action failed: ' + err.message)
+      toast.error('Action failed: ' + err.message)
     } finally {
       setAiLoading(false, null)
     }

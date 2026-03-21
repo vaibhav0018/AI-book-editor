@@ -2,12 +2,15 @@ import { useState } from 'react'
 import useEditorStore from '@/app/store/editorStore'
 import useBookStore from '@/app/store/bookStore'
 import { streamGenerateChapter, rewriteText, summarizeChapter } from './aiApi'
+import StepIndicator from '@/components/ui/StepIndicator'
+import { useToast } from '@/components/ui/Toast'
 
 export default function AISidePanel() {
   const { currentChapter, setAiLoading, aiLoading, aiStep, setCurrentChapterContent, fetchChapters } = useEditorStore()
   const { selectedBook, fetchBook } = useBookStore()
   const [lastResult, setLastResult] = useState(null)
   const [abortFn, setAbortFn] = useState(null)
+  const toast = useToast()
 
   const bookId = selectedBook?.id
 
@@ -32,7 +35,7 @@ export default function AISidePanel() {
       (err) => {
         setAiLoading(false, null)
         setAbortFn(null)
-        alert('Generation failed: ' + err.message)
+        toast.error('Generation failed: ' + err.message)
       },
     )
     setAbortFn(() => cancel)
@@ -55,7 +58,7 @@ export default function AISidePanel() {
       )
       setLastResult({ action, text: data.result, model: data.model_used })
     } catch (err) {
-      alert('Action failed: ' + err.message)
+      toast.error('Action failed: ' + err.message)
     } finally {
       setAiLoading(false, null)
     }
@@ -69,7 +72,7 @@ export default function AISidePanel() {
       setLastResult({ action: 'summarize', text: data.summary, model: data.model_used })
       fetchChapters(bookId)
     } catch (err) {
-      alert('Summarize failed: ' + err.message)
+      toast.error('Summarize failed: ' + err.message)
     } finally {
       setAiLoading(false, null)
     }
@@ -159,18 +162,8 @@ export default function AISidePanel() {
               </div>
             )}
 
-            {/* AI Step indicator */}
-            {aiLoading && aiStep && (
-              <div className="rounded bg-accent p-2 text-xs text-accent-foreground">
-                <span className="mr-1 inline-block animate-pulse">●</span>
-                {aiStep === 'writing' && 'Writing chapter...'}
-                {aiStep === 'summarizing' && 'Summarizing...'}
-                {aiStep === 'continue' && 'Continuing...'}
-                {aiStep === 'rewrite' && 'Rewriting...'}
-                {aiStep === 'improve' && 'Improving...'}
-                {aiStep === 'change_tone' && 'Changing tone...'}
-              </div>
-            )}
+            {/* Step indicator */}
+            {aiLoading && <StepIndicator currentStep={aiStep} />}
 
             {/* Result preview */}
             {lastResult && (
