@@ -30,9 +30,11 @@ export default function ChapterEditor() {
   const handleGenerateOutline = async () => {
     if (!bookId) return
     setAiLoading(true, 'planning')
+    toast.info('Cooking your outline — watch the sidebar')
     try {
       await generateOutline(bookId)
       await fetchChapters(bookId)
+      toast.success('Outline is ready')
     } catch (err) {
       toast.error('Outline generation failed: ' + err.message)
     } finally {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import useEditorStore from '@/app/store/editorStore'
 import useBookStore from '@/app/store/bookStore'
 import { cn } from '@/lib/utils'
@@ -10,16 +10,38 @@ const STATUS_DOT = {
   reviewed: 'bg-green-500',
 }
 
+const OUTLINE_WAIT_MESSAGES = [
+  'Cooking up your outline…',
+  'Stirring plot threads together…',
+  'Letting the story simmer…',
+  'Tasting themes and pacing…',
+  'Almost ready to serve…',
+]
+
 export default function ChapterSidebar({ bookId, onGenerateOutline }) {
   const {
     chapters, currentChapter, selectChapter,
-    createChapter, deleteChapter, aiLoading,
+    createChapter, deleteChapter, aiLoading, aiStep,
   } = useEditorStore()
   const { selectedBook } = useBookStore()
   const toast = useToast()
   const [adding, setAdding] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [outlineMsgIdx, setOutlineMsgIdx] = useState(0)
+
+  const outlineInProgress = aiLoading && aiStep === 'planning'
+
+  useEffect(() => {
+    if (!outlineInProgress) {
+      setOutlineMsgIdx(0)
+      return
+    }
+    const id = setInterval(() => {
+      setOutlineMsgIdx((i) => (i + 1) % OUTLINE_WAIT_MESSAGES.length)
+    }, 2800)
+    return () => clearInterval(id)
+  }, [outlineInProgress])
 
   const handleAdd = async () => {
     if (!newTitle.trim()) return
@@ -75,14 +97,37 @@ export default function ChapterSidebar({ bookId, onGenerateOutline }) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-2 pb-3">
-        {chapters.length === 0 && !aiLoading && (
+        {chapters.length === 0 && outlineInProgress && (
+          <div className="animate-slide-up px-2 py-8 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-warm-light/50 border border-border/60">
+              <span className="inline-block h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            </div>
+            <p className="mt-5 min-h-[2.5rem] px-2 text-sm font-medium leading-snug text-foreground transition-opacity duration-300">
+              {OUTLINE_WAIT_MESSAGES[outlineMsgIdx]}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Hang tight — this often takes 15–40 seconds
+            </p>
+            <div className="mx-auto mt-6 max-w-[200px] space-y-2.5">
+              <div className="h-2.5 w-full rounded-full bg-warm-light/90 animate-pulse" />
+              <div className="mx-auto h-2.5 w-[85%] rounded-full bg-warm-light/70 animate-pulse" style={{ animationDelay: '150ms' }} />
+              <div className="mx-auto h-2.5 w-[65%] rounded-full bg-warm-light/50 animate-pulse" style={{ animationDelay: '300ms' }} />
+            </div>
+            <p className="mt-5 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
+              Chef’s special: your chapter list
+            </p>
+          </div>
+        )}
+
+        {chapters.length === 0 && !outlineInProgress && (
           <div className="px-2 py-8 text-center">
             <span className="text-3xl">📋</span>
             <p className="mt-3 text-xs text-muted-foreground">No chapters yet.</p>
             <p className="mt-1 text-[11px] text-muted-foreground">Let AI plan your story structure.</p>
             <button
               onClick={onGenerateOutline}
-              className="mt-4 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
+              disabled={aiLoading}
+              className="mt-4 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
             >
               ✦ Generate Outline
             </button>

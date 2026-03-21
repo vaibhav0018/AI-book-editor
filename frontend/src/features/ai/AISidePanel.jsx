@@ -18,7 +18,17 @@ function stripHtml(html) {
 }
 
 export default function AISidePanel() {
-  const { currentChapter, setAiLoading, aiLoading, aiStep, setCurrentChapterContent, updateChapterContent, fetchChapters } = useEditorStore()
+  const {
+    currentChapter,
+    setAiLoading,
+    aiLoading,
+    aiStep,
+    setCurrentChapterContent,
+    updateChapterContent,
+    fetchChapters,
+    refreshCurrentChapter,
+    scrapChapter,
+  } = useEditorStore()
   const { selectedBook, fetchBook } = useBookStore()
   const [lastResult, setLastResult] = useState(null)
   const [abortFn, setAbortFn] = useState(null)
@@ -99,7 +109,8 @@ export default function AISidePanel() {
     try {
       const { data } = await summarizeChapter(currentChapter.id)
       setLastResult({ action: 'summarize', text: data.summary, model: data.model_used })
-      fetchChapters(bookId)
+      await fetchChapters(bookId)
+      await refreshCurrentChapter()
       toast.success('Chapter summarized')
     } catch (err) {
       toast.error('Summarize failed: ' + err.message)
@@ -213,6 +224,23 @@ export default function AISidePanel() {
                   className="w-full rounded-lg bg-primary px-3 py-2.5 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
                 >
                   Generate Chapter
+                </button>
+              )}
+              {currentChapter.content?.trim() && !aiLoading && (
+                <button
+                  onClick={async () => {
+                    if (!confirm('Scrap this chapter? Content and summary will be cleared. You can regenerate after.')) return
+                    try {
+                      await scrapChapter(currentChapter.id)
+                      setLastResult(null)
+                      toast.success('Chapter scrapped — ready to regenerate')
+                    } catch (err) {
+                      toast.error('Failed to scrap: ' + err.message)
+                    }
+                  }}
+                  className="mt-2 w-full rounded-lg border border-destructive/40 px-3 py-2 text-xs font-medium text-destructive hover:bg-destructive/10"
+                >
+                  🗑 Scrap Chapter
                 </button>
               )}
             </section>

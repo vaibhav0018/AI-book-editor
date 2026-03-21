@@ -49,16 +49,17 @@ async def generate_chapter(payload: GenerateChapterRequest, db: Session = Depend
                 full_text.append(chunk)
                 yield f"data: {json.dumps({'token': chunk})}\n\n"
 
-            # Signal the frontend that streaming is done
-            yield f"data: {json.dumps({'done': True, 'model_used': model_used})}\n\n"
-        finally:
-            # Post-stream: save content, summarize, update memory
+            # Persist, summarize, and update memory BEFORE "done" so clients that
+            # refetch on `done` see chapter.summary and book.global_summary.
             content = "".join(full_text)
             if content:
                 await service.finalize_chapter_generation(
                     db, payload.book_id, payload.chapter_id,
                     content, model_used, context,
                 )
+            yield f"data: {json.dumps({'done': True, 'model_used': model_used})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 

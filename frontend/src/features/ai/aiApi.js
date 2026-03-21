@@ -44,8 +44,15 @@ export function streamGenerateChapter(bookId, chapterId, onToken, onDone, onErro
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const json = JSON.parse(line.slice(6))
+          if (json.error) {
+            onError(new Error(json.error))
+            return
+          }
           if (json.token) onToken(json.token)
-          if (json.done) onDone(json.model_used)
+          if (json.done) {
+            const ret = onDone(json.model_used)
+            if (ret && typeof ret.then === 'function') await ret
+          }
         }
       }
     })
