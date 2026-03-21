@@ -14,7 +14,7 @@ import httpx
 from config import settings
 
 # Sentinel used by agents to check which provider was used
-PROVIDER_OPENAI = "gpt-4o"
+PROVIDER_OPENAI = settings.OPENAI_MODEL
 PROVIDER_OLLAMA = settings.OLLAMA_MODEL
 
 
@@ -57,7 +57,7 @@ class LLMClient:
             return self._openai_stream(messages, temperature), PROVIDER_OPENAI
 
         resp = await self._openai.chat.completions.create(
-            model="gpt-4o",
+            model=settings.OPENAI_MODEL,
             messages=messages,
             temperature=temperature,
         )
@@ -67,7 +67,7 @@ class LLMClient:
         self, messages, temperature
     ) -> AsyncGenerator[str, None]:
         stream = await self._openai.chat.completions.create(
-            model="gpt-4o",
+            model=settings.OPENAI_MODEL,
             messages=messages,
             temperature=temperature,
             stream=True,

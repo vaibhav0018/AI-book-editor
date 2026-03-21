@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     # AI — populated in Phase 2; defaults keep the app bootable now
     OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen2.5:7b"
 
