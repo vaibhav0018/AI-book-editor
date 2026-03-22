@@ -29,6 +29,14 @@ uvicorn main:app --reload
 
 API: http://localhost:8000 — Swagger docs at http://localhost:8000/docs
 
+### Tests
+
+```bash
+cd backend
+pip install -r requirements.txt   # includes pytest
+python -m pytest tests -v
+```
+
 ### Frontend
 
 ```bash
@@ -38,6 +46,10 @@ npm run dev
 ```
 
 App: http://localhost:5173
+
+## Demo / Walkthrough
+
+<!-- Add your Loom or video walkthrough URL here -->
 
 ## How It Works
 
@@ -92,6 +104,7 @@ Why this structure? It keeps things navigable. When I need to change how chapter
 | POST | `/api/ai/rewrite` | Rewrite / improve / continue text |
 | POST | `/api/ai/summarize` | Summarize a chapter |
 | GET | `/api/chapters/{id}/history` | View AI action audit log |
+| GET | `/api/books/{id}/export/pdf` | Download book as PDF |
 
 ## Bonus Questions
 
@@ -113,12 +126,11 @@ The agent pattern (planner/writer/summarizer/editor) came from the observation t
 
 ### 4. What would you improve with more time?
 
-A few things bother me:
+A few things I'd add:
 
 - **Entity memory**: right now the summary captures plot events but can lose track of minor characters or specific details. I'd add a structured entity store (characters, locations, plot threads) that gets updated alongside summaries.
 - **Diff view**: when the AI rewrites content, you should see a proper before/after diff, not just accept/reject on the full result.
-- **Export**: no way to get your book out as PDF or DOCX yet.
-- **Testing**: the backend has no automated tests. I tested everything manually during development, but proper pytest coverage would be needed before this goes anywhere near production.
+- **DOCX export**: PDF export exists; DOCX would round out the export options.
 - **Collaborative editing**: TipTap supports Yjs for real-time collaboration, which would be a natural extension.
 
 ### 5. Where did AI tools help you, and where did you rely on your own implementation?
