@@ -1,41 +1,36 @@
 # AI Book Editor
 
-A writing environment built for long-form content. Instead of treating AI as a chatbot that spits out text, this tool treats it as a collaborator that understands your entire manuscript — even when the manuscript is too long to fit in a single prompt.
+A writing app for **long-form fiction**: the AI plans outlines, drafts chapters with streaming, and keeps a **compressed memory** of the whole book so later chapters stay coherent—even when the full manuscript would not fit in one prompt.
 
-The core idea: after every chapter the AI writes, the system automatically summarizes it and feeds that compressed memory forward. By chapter 20, the AI still knows what happened in chapter 1, without needing the full text.
+---
 
-## Tech Stack
+## Tech stack
 
 | Layer | Stack |
 |-------|-------|
 | Frontend | React 18, Vite, TipTap v2, Zustand, Tailwind CSS |
 | Backend | Python 3.11, FastAPI, SQLAlchemy, SQLite, Alembic |
-| AI | OpenAI GPT-4o-mini (primary), Ollama qwen2.5:7b (local fallback) |
+| AI | OpenAI (default `gpt-4o-mini` via env), Ollama fallback |
 
-## Getting Started
+---
+
+## Quick start
 
 ### Backend
 
 ```bash
 cd backend
 python -m venv .venv
-.venv\Scripts\activate      # Windows
-# source .venv/bin/activate  # macOS / Linux
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # macOS / Linux
 pip install -r requirements.txt
-cp .env.example .env         # then add your OPENAI_API_KEY
+cp .env.example .env            # add OPENAI_API_KEY (optional if using Ollama)
 alembic upgrade head
 uvicorn main:app --reload
 ```
 
-API: http://localhost:8000 — Swagger docs at http://localhost:8000/docs
-
-### Tests
-
-```bash
-cd backend
-pip install -r requirements.txt   # includes pytest
-python -m pytest tests -v
-```
+- API: http://localhost:8000  
+- Interactive docs: http://localhost:8000/docs  
 
 ### Frontend
 
@@ -45,105 +40,123 @@ npm install
 npm run dev
 ```
 
-App: http://localhost:5173
+- App: http://localhost:5173  
 
-## Demo / Walkthrough
+### Tests
 
-<!-- Add your Loom or video walkthrough URL here -->
+```bash
+cd backend
+pip install -r requirements.txt
+python -m pytest tests -v
+```
 
-## How It Works
+---
 
-You create a book (title + genre + concept brief), then hit "Generate Outline" to get a chapter structure. Click into any chapter, hit "Generate Chapter" in the AI panel, and watch it stream in real-time. After that you can edit freely, ask the AI to rewrite sections, or just keep writing manually. Everything auto-saves.
+## What you can do
 
-The interesting part is what happens behind the scenes. Every time a chapter is generated, the system kicks off a background pipeline: save the content, summarize it down to ~150 words, update the book's rolling global summary. When you generate the next chapter, the AI gets your book brief, the global summary, all chapter summaries, and the previous chapter's full text. That's how it stays consistent without blowing up the context window.
+- Create books (title, genre, brief) and **generate an AI outline** (chapters with titles + briefs).
+- Open a chapter, **generate or edit** prose in a rich-text editor; changes **auto-save** after a short debounce.
+- Use the AI panel: generate chapter (SSE), rewrite / improve / continue / tone, summarize, scrap draft, view **chapter + book memory** summaries.
+- **Export** the book as PDF; delete or reorder chapters.
 
-## Architecture
+---
 
-I went with a feature-based modular monolith. Each domain (book, chapter, AI) owns its own routes, service layer, models, and schemas. The AI layer is further split into agents (planner, writer, summarizer, editor), each with dedicated prompt templates.
+## Architecture (high level)
+
+Feature-based **modular monolith**: each area owns routes, services, models, and schemas.
 
 ```
 backend/
-├── features/
-│   ├── book/          routes, service, models, schemas
-│   ├── chapter/       routes, service, models, schemas
-│   └── ai/            agents, LLM client, service, schemas
-├── memory/            context builder + persistence
-├── prompts/           isolated prompt templates
-└── middleware/         error handling
+├── features/book/     # CRUD, PDF export
+├── features/chapter/  # CRUD, reorder
+├── features/ai/       # agents, LLM client, orchestration
+├── memory/            # context builder + summary persistence
+├── prompts/           # prompt templates per agent
+└── middleware/        # error handling
 
 frontend/src/
-├── app/store/         Zustand state (book + editor)
-├── features/
-│   ├── book/          dashboard, create modal
-│   ├── chapter/       sidebar, editor page
-│   └── ai/            side panel, API layer
-└── components/
-    ├── Editor/        TipTap rich text editor
-    └── ui/            toast, step indicator, skeleton
+├── app/store/         # Zustand (books + editor)
+├── features/book|chapter|ai/
+└── components/        # TipTap editor, UI (toasts, etc.)
 ```
 
-Why this structure? It keeps things navigable. When I need to change how chapters work, everything related is in one folder. The AI agents don't know about HTTP or databases — they just take messages and return text. The service layer handles orchestration.
+**Agents:** planner (outline JSON), writer (streaming chapter), summarizer (chapter + rolling global summary), editor (rewrite-style actions). They do not talk to HTTP or the DB directly; a **service layer** wires them to persistence and audit logs (`ai_actions`).
 
-## API Endpoints
+---
 
-| Method | Path | What it does |
-|--------|------|--------------|
-| POST | `/api/books/` | Create a book |
-| GET | `/api/books/` | List all books |
-| GET | `/api/books/{id}` | Get book with chapters |
-| PUT | `/api/books/{id}` | Update book metadata |
-| DELETE | `/api/books/{id}` | Delete book (cascades chapters) |
-| POST | `/api/books/{id}/chapters` | Add a chapter |
-| GET | `/api/books/{id}/chapters` | List chapters for a book |
-| GET | `/api/chapters/{id}` | Get single chapter |
-| PUT | `/api/chapters/{id}` | Update chapter content |
+## API reference
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/books/` | Create book |
+| GET | `/api/books/` | List books |
+| GET | `/api/books/{id}` | Book + chapter list |
+| PUT | `/api/books/{id}` | Update metadata |
+| DELETE | `/api/books/{id}` | Delete book (cascade) |
+| POST | `/api/books/{id}/chapters` | Add chapter |
+| GET | `/api/books/{id}/chapters` | List chapters |
+| GET | `/api/chapters/{id}` | Get chapter |
+| PUT | `/api/chapters/{id}` | Update content |
 | DELETE | `/api/chapters/{id}` | Delete chapter |
-| PATCH | `/api/chapters/{id}/reorder` | Change chapter position |
-| POST | `/api/ai/outline` | Generate chapter outline from brief |
-| POST | `/api/ai/generate-chapter` | Stream a chapter draft (SSE) |
-| POST | `/api/ai/rewrite` | Rewrite / improve / continue text |
-| POST | `/api/ai/summarize` | Summarize a chapter |
-| GET | `/api/chapters/{id}/history` | View AI action audit log |
-| GET | `/api/books/{id}/export/pdf` | Download book as PDF |
+| PATCH | `/api/chapters/{id}/reorder` | Reorder |
+| POST | `/api/ai/outline` | Generate outline |
+| POST | `/api/ai/generate-chapter` | Stream chapter (SSE) |
+| POST | `/api/ai/rewrite` | Edit actions on text |
+| POST | `/api/ai/summarize` | Summarize chapter |
+| GET | `/api/chapters/{id}/history` | AI action history |
+| GET | `/api/books/{id}/export/pdf` | Download PDF |
 
-## Bonus Questions
+---
+
+## Bonus questions
+
+*Short answers required for the assignment; implementation details live in `memory/context_builder.py` and `features/ai/`.*
 
 ### 1. How does your system preserve context across a long book?
 
-Through a rolling summary memory system. Every chapter gets auto-summarized after generation (~150 words). There's also a global summary that captures the entire story arc so far. When generating a new chapter, the context builder assembles: book metadata + global summary + all chapter summaries + the previous chapter's full text + the current chapter's brief. This keeps token usage roughly constant regardless of book length — chapter 30 costs about the same as chapter 3.
+After each generated chapter, the pipeline saves the text, produces a **~150-word chapter summary**, and updates a **rolling global summary** (~200 words) for the whole story so far. For the **next** generation, a **context builder** sends: book metadata and brief, the global summary, **all other chapters’ summaries** (not full text), the **full text of only the immediately previous chapter**, and the current chapter’s title/brief (and any user draft). That keeps prompt size **roughly bounded**—chapter 30 costs about as much context as chapter 3 in terms of design, instead of pasting the entire book.
 
 ### 2. How do you prevent the AI from losing consistency over time?
 
-Three mechanisms working together. First, the global summary is updated after every chapter, so the AI always has a compressed view of the full story. Second, the immediately preceding chapter is sent in full (not summarized), which preserves prose style and narrative flow. Third, every chapter's brief acts as a guardrail — the planner agent creates these upfront during outline generation, so each chapter has a clear purpose even before it's written.
-
-It's not perfect. If a minor character appears in chapter 2 and then again in chapter 15, the summary might not preserve that detail. With more time I'd add entity tracking (characters, locations, plot threads) as a separate memory layer.
+Three levers: **(1)** the global summary gives a story-wide anchor; **(2)** the previous chapter in full preserves voice, pacing, and what just happened; **(3)** per-chapter **briefs** from the outline keep each chapter aimed at a defined beat. Summaries can still drop minor details (e.g. a small character from an early chapter); a stronger fix would be structured **entity memory** (see question 4).
 
 ### 3. Why did you choose your architecture?
 
-Practical reasons mostly. FastAPI because it handles async natively and streaming (SSE) is straightforward. SQLite because it's zero-config and fine for a prototype — swapping to Postgres later is a one-line config change. React + TipTap because TipTap gives you a real editor (not a textarea) with programmatic content insertion, which matters when you're streaming AI text into it.
-
-The agent pattern (planner/writer/summarizer/editor) came from the observation that each AI task has fundamentally different prompts and expectations. The planner returns JSON, the writer returns prose, the summarizer returns compressed text. Keeping them separate makes prompts cleaner and bugs easier to trace.
+**FastAPI** fits async, streaming (SSE), and clear OpenAPI docs. **SQLite** is zero-config for a prototype; the stack is easy to point at Postgres later. **React + TipTap** gives a real document model and programmatic updates for streaming. Splitting **planner / writer / summarizer / editor** keeps prompts and failure modes separate; the **service layer** owns orchestration and DB writes so agents stay testable in isolation.
 
 ### 4. What would you improve with more time?
 
-A few things I'd add:
+- **Entity memory** — characters, places, open threads, updated with summaries.  
+- **Diff UI** for AI rewrites (side-by-side or inline), not only accept/reject blocks.  
+- **DOCX export** alongside PDF.  
+- **Broader automated tests** (including mocked or contract tests for LLM routes) and optional **E2E** against a running stack.  
+- **Collaboration** (e.g. Yjs + TipTap) if the product moves beyond single-user.
 
-- **Entity memory**: right now the summary captures plot events but can lose track of minor characters or specific details. I'd add a structured entity store (characters, locations, plot threads) that gets updated alongside summaries.
-- **Diff view**: when the AI rewrites content, you should see a proper before/after diff, not just accept/reject on the full result.
-- **DOCX export**: PDF export exists; DOCX would round out the export options.
-- **Collaborative editing**: TipTap supports Yjs for real-time collaboration, which would be a natural extension.
+### 5. Where did AI tools help you, and where did you rely fully on your own implementation?
 
-### 5. Where did AI tools help you, and where did you rely on your own implementation?
+**AI coding tools** (e.g. Cursor) sped up boilerplate, scaffolding, and repetitive CRUD; **the product’s** LLM powers outlines, generation, summarization, and edits. **My own work** includes the **memory and context design** (what to compress vs. send in full), **agent boundaries**, **prompt intent and structure**, **streaming + finalize pipeline**, integration debugging, and validation of behavior end-to-end.
 
-See [AI_USAGE.md](AI_USAGE.md) for the full breakdown.
+For a **transparent, line-by-line** breakdown of what was AI-assisted vs. hand-written, see **[AI_USAGE.md](AI_USAGE.md)**.
 
-## Assumptions and Tradeoffs
+---
 
-- **SQLite over Postgres**: simpler setup for a prototype. The schema is designed to port easily.
-- **GPT-4o-mini as default**: cheaper and faster than GPT-4o, good enough for draft generation. The LLM client supports swapping models via env var.
-- **No auth**: this is a single-user prototype. Adding auth would be straightforward with FastAPI's dependency injection.
-- **No pagination**: book/chapter lists aren't paginated. Fine for a demo, not for production.
-- **Auto-save over explicit save**: the editor debounces and saves after 1.5 seconds of inactivity. Some authors might prefer manual save — could add a toggle.
+## Assumptions and tradeoffs
+
+| Choice | Rationale |
+|--------|-----------|
+| SQLite | Simple local dev; schema ports to Postgres with config change. |
+| Configurable OpenAI model | Cost/quality tradeoff via env; Ollama path when API is unavailable. |
+| No auth | Single-user prototype scope. |
+| No list pagination | Fine for demo-scale libraries. |
+| Debounced auto-save | Fewer “lost work” incidents; power users could get an explicit-save toggle later. |
+
+---
+
+## Demo / walkthrough
+
+<!-- Optional: add your Loom or screen recording URL here. -->
+
+---
 
 ## License
 
