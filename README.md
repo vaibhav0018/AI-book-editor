@@ -9,8 +9,8 @@ A writing app for **long-form fiction**: the AI plans outlines, drafts chapters 
 | Layer | Stack |
 |-------|-------|
 | Frontend | React 18, Vite, TipTap v2, Zustand, Tailwind CSS |
-| Backend | Python 3.11, FastAPI, SQLAlchemy, SQLite, Alembic |
-| AI | OpenAI (default `gpt-4o-mini` via env), Ollama fallback |
+| Backend | Python 3.11, FastAPI, SQLAlchemy, SQLite, Alemb ic |
+| AI | OpenAI (default `gpt-4o-mini` via env), local model Ollama fallback |
 
 ---
 
