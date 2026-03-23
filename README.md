@@ -166,6 +166,50 @@ For a **transparent, line-by-line** breakdown of what was AI-assisted vs. hand-w
 | No list pagination | Fine for demo-scale libraries. |
 | Debounced auto-save | Fewer “lost work” incidents; power users could get an explicit-save toggle later. |
 
+---
+
+## Deploying on AWS (future)
+
+Using only **EC2**, **S3**, and **RDS**:
+
+**S3 — frontend**  
+- Run `npm run build` in `frontend` and upload the contents of `dist/` to a bucket.  
+- Turn on **static website hosting** (or serve the bucket behind your usual HTTPS setup).  
+- Build the app with `VITE_API_BASE_URL` set to your **public API URL** (the EC2 address or domain you expose for FastAPI), not `http://localhost:8000`.
+
+**RDS — database**  
+- Create an **RDS for PostgreSQL** instance in the same VPC (or a reachable network) as your app.  
+- Point SQLAlchemy at the RDS endpoint with Alembic migrations; keep credentials in env vars or a restricted file on the server—not in Git.
+
+**EC2 — backend + nginx**  
+- Launch an EC2 instance (Amazon Linux or Ubuntu), install Python 3.11+, clone the repo, set up a venv, `pip install -r requirements.txt`, run Alembic migrations against RDS.  
+- Run **uvicorn** bound to localhost only, e.g. `uvicorn main:app --host 127.0.0.1 --port 8000` (use **systemd** so it restarts on reboot).  
+- Install **nginx** and terminate **HTTPS** on port 443 (TLS certs via ACM + a load balancer, or **Let’s Encrypt** on the instance). Nginx **reverse-proxies** all API traffic to uvicorn:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name api.yourdomain.com;
+    # ssl_certificate / ssl_certificate_key paths here
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;   # helps SSE/streaming AI responses
+    }
+}
+```
+
+- Security group: **443** (and **80** if you redirect HTTP→HTTPS) from the internet; **RDS** only from this instance’s security group.  
+- Store **`OPENAI_API_KEY`** and the DB URL in the instance environment or a protected `.env` on the box—not in Git.  
+- Point **`VITE_API_BASE_URL`** at your public API URL, e.g. `https://api.yourdomain.com`.
+
+**CORS**  
+- Configure FastAPI to allow your **S3 website origin** (or the domain you use in front of it) so the browser can call the nginx/EC2 API.
 
 ---
 
