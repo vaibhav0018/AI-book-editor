@@ -1,5 +1,11 @@
 # AI Book Editor
 
+<p align="center">
+  <img src="assets/Screenshot%202026-03-23%20094759.png" alt="BookForge library — your books on a grid" width="900" /><br />
+  <img src="assets/bookforge-editor.png" alt="BookForge editor with chapters, writing area, and AI assistant" width="900" /><br />
+  <img src="assets/bookforge-library.png" alt="BookForge library — your books on a grid" width="900" />
+</p>
+
 A writing app for **long-form fiction**: the AI plans outlines, drafts chapters with streaming, and keeps a **compressed memory** of the whole book so later chapters stay coherent—even when the full manuscript would not fit in one prompt.
 
 ---
@@ -40,7 +46,9 @@ npm install
 npm run dev
 ```
 
-- App: http://localhost:5173  
+- App: http://localhost:5173
+
+---
 
 ### Tests
 
@@ -48,7 +56,13 @@ npm run dev
 cd backend
 pip install -r requirements.txt
 python -m pytest tests -v
-```
+```  
+---
+
+## Demo / walkthrough
+# Loom vidoe
+
+https://www.loom.com/share/d0fdff2d0a824f5385a6fdbe8c362055
 
 ---
 
@@ -57,7 +71,7 @@ python -m pytest tests -v
 - Create books (title, genre, brief) and **generate an AI outline** (chapters with titles + briefs).
 - Open a chapter, **generate or edit** prose in a rich-text editor; changes **auto-save** after a short debounce.
 - Use the AI panel: generate chapter (SSE), rewrite / improve / continue / tone, summarize, scrap draft, view **chapter + book memory** summaries.
-- **Export** the book as PDF; delete or reorder chapters.
+- **Export** the book as PDF.
 
 ---
 
@@ -114,11 +128,13 @@ frontend/src/
 
 ### 1. How does your system preserve context across a long book?
 
-After each generated chapter, the pipeline saves the text, produces a **~150-word chapter summary**, and updates a **rolling global summary** (~200 words) for the whole story so far. For the **next** generation, a **context builder** sends: book metadata and brief, the global summary, **all other chapters’ summaries** (not full text), the **full text of only the immediately previous chapter**, and the current chapter’s title/brief (and any user draft). That keeps prompt size **roughly bounded**—chapter 30 costs about as much context as chapter 3 in terms of design, instead of pasting the entire book.
+After each generated chapter, the pipeline saves the text, produces a **~150-word chapter summary** using llm (we can use small local models for this in future and for generation we can use main models for cost saving), and updates a **rolling global summary** (~200 words) for the whole story so far. For the **next** generation, a **context builder** sends: book metadata and brief, the global summary, **all other chapters’ summaries** (not full text), the **full text of only the immediately previous chapter**, and the current chapter’s title/brief (and any user draft). That keeps prompt size **roughly bounded**—chapter 30 costs about as much context as chapter 3 in terms of design, instead of pasting the entire book.
+
+**Future-scope**- we can use RAG after users increases >10k. 
 
 ### 2. How do you prevent the AI from losing consistency over time?
 
-Three levers: **(1)** the global summary gives a story-wide anchor; **(2)** the previous chapter in full preserves voice, pacing, and what just happened; **(3)** per-chapter **briefs** from the outline keep each chapter aimed at a defined beat. Summaries can still drop minor details (e.g. a small character from an early chapter); a stronger fix would be structured **entity memory** (see question 4).
+Three levers: **(1)** the global summary gives a story-wide anchor; **(2)** the previous chapter in full preserves context, pacing, and what just happened; **(3)** per-chapter **briefs** from the outline keep each chapter aimed at a defined beat. Summaries can still drop minor details (e.g. a small character from an early chapter); a stronger fix would be structured **entity memory or graph**-characters, places, open threads, updated with summaries..
 
 ### 3. Why did you choose your architecture?
 
@@ -134,7 +150,7 @@ Three levers: **(1)** the global summary gives a story-wide anchor; **(2)** the 
 
 ### 5. Where did AI tools help you, and where did you rely fully on your own implementation?
 
-**AI coding tools** (e.g. Cursor) sped up boilerplate, scaffolding, and repetitive CRUD; **the product’s** LLM powers outlines, generation, summarization, and edits. **My own work** includes the **memory and context design** (what to compress vs. send in full), **agent boundaries**, **prompt intent and structure**, **streaming + finalize pipeline**, integration debugging, and validation of behavior end-to-end.
+**AI coding tools** (e.g. Cursor, claude, chatgpt) sped up boilerplate, scaffolding, and repetitive CRUD; **the product’s** LLM powers outlines, generation, summarization, and edits. **My own work** includes the **memory and context design** (what to compress vs. send in full), **agent boundaries**, **prompt intent and structure**, **streaming + finalize pipeline**, integration debugging, and validation of behavior end-to-end.
 
 For a **transparent, line-by-line** breakdown of what was AI-assisted vs. hand-written, see **[AI_USAGE.md](AI_USAGE.md)**.
 
@@ -150,11 +166,6 @@ For a **transparent, line-by-line** breakdown of what was AI-assisted vs. hand-w
 | No list pagination | Fine for demo-scale libraries. |
 | Debounced auto-save | Fewer “lost work” incidents; power users could get an explicit-save toggle later. |
 
----
-
-## Demo / walkthrough
-
-<!-- Optional: add your Loom or screen recording URL here. -->
 
 ---
 

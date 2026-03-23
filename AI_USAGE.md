@@ -4,7 +4,7 @@ Transparency about how AI tools were used during development.
 
 ## Tools Used
 
-- **Cursor IDE** with Claude as the AI assistant — used throughout development for code generation, debugging, and scaffolding.
+- **Cursor IDE/ claude** with Claude and cursor as the AI assistant — used throughout development for code generation, debugging, and scaffolding.
 - **OpenAI GPT-4o-mini** — powers the actual product features (outline generation, chapter writing, summarization, rewriting).
 
 ## What AI Helped With
